@@ -44,6 +44,9 @@ int main(int argc, char** argv) {
     }
     
     frontend::Parser parser(tk_stream);
+    // for(auto tk:tk_stream){
+    //     std::cout << tk.value << "," << frontend::toString(tk.type) << std::endl;
+    // }
     frontend::CompUnit* node = parser.get_abstract_syntax_tree();
 
     // compiler <src_filename> -s1 -o <output_filename>
