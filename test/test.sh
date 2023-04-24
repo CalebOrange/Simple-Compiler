@@ -13,4 +13,4 @@ cd ..
 
 
 # ayntax -0
-./bin/compiler test/testcase/basic/04_arr_defn3.sy -s1 -o ./test/output/basic/04_arr_defn3.json
+./bin/compiler test/testcase/basic/00_main.sy -s1 -o ./test/output/basic/00_main.json
