@@ -1,0 +1,5 @@
+/home/mingcheng/SimpleCompiler/build/CMakeFiles/jsoncpp.dir
+/home/mingcheng/SimpleCompiler/build/CMakeFiles/Front.dir
+/home/mingcheng/SimpleCompiler/build/CMakeFiles/compiler.dir
+/home/mingcheng/SimpleCompiler/build/CMakeFiles/edit_cache.dir
+/home/mingcheng/SimpleCompiler/build/CMakeFiles/rebuild_cache.dir

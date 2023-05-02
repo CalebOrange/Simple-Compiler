@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "*.sy": "c",
+        "out": "python",
+        "*.ir": "rust",
+        "*.s": "loongarch",
+        "vector": "cpp",
+        "iostream": "cpp",
+        "iosfwd": "cpp",
+        "fstream": "cpp",
+        "*.tcc": "cpp",
+        "new": "cpp",
+        "ostream": "cpp"
+    }
+}
