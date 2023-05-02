@@ -215,11 +215,6 @@ bool is_ident_composition(char c)
     return is_letter(c) || c == '_';
 }
 
-// bool is_space(char c)
-// {
-//     return c == ' ' || c == '\n' || c == '\t';
-// }
-
 bool frontend::DFA::next(char input, Token &buf)
 {
 #ifdef DEBUG_DFA_BEGIN
@@ -234,19 +229,15 @@ bool frontend::DFA::next(char input, Token &buf)
             cur_state = State::Ident;
         else if (is_digit(input))
             cur_state = State::IntLiteral;
+        else if (is_dot(input))
+            cur_state = State::FloatLiteral;
         else if (is_operator(input))
             cur_state = State::op;
-        // else if (is_space(input))
-        //     reset();
         else
         {
             reset();
             return is_token;
         }
-        // assert(0 && "invalid input, stop at Empty");
-
-        // 更新字符串
-        // if (!is_space(input))
         cur_str += input;
     }
     else if (cur_state == State::Ident)
@@ -259,19 +250,10 @@ bool frontend::DFA::next(char input, Token &buf)
         }
         else if (is_digit(input))
         {
-            // if (frontend::keywords.count(cur_str)) // 当前字符串是关键词
-            // {
-            //     cur_state = State::IntLiteral;
-            //     is_token = true;
-            // }
             cur_state = State::Ident;
         }
         else if (is_ident_composition(input))
         {
-            // if (frontend::keywords.count(cur_str)) // 当前字符串是关键词
-            // {
-            //     is_token = true;
-            // }
             cur_state = State::Ident;
         }
         else
@@ -279,14 +261,6 @@ bool frontend::DFA::next(char input, Token &buf)
             is_token = true;
             cur_state = State::Empty;
         }
-        // else if (is_space(input))
-        // {
-        //     if (cur_str != "")
-        //         is_token = true;
-        //     cur_state = State::Empty;
-        // }
-        // else
-        //     assert(0 && "invalid input, stop at Ident");
 
         // 更新字符串
         if (is_token)
@@ -307,6 +281,10 @@ bool frontend::DFA::next(char input, Token &buf)
             cur_state = State::IntLiteral;
             is_token = true;
         }
+        else if (is_dot(input)){
+            cur_state = State::FloatLiteral;
+            is_token = true;
+        }
         else if (is_ident_composition(input))
         {
             cur_state = State::Ident;
@@ -324,14 +302,6 @@ bool frontend::DFA::next(char input, Token &buf)
             is_token = true;
             cur_state = State::Empty;
         }
-        // else if (is_space(input))
-        // {
-        //     if (cur_str.size() != 0)
-        //         is_token = true;
-        //     cur_state = State::Empty;
-        // }
-        // else
-        //     assert(0 && "invalid input, stop at op");
 
         // 更新字符串
         if (is_token)
@@ -351,8 +321,6 @@ bool frontend::DFA::next(char input, Token &buf)
         else if (is_letter(input))
         {
             cur_state = State::IntLiteral;
-            // cur_state = State::Ident;
-            // is_token = true;
         }
         else if (is_operator(input))
         {
@@ -368,14 +336,6 @@ bool frontend::DFA::next(char input, Token &buf)
             is_token = true;
             cur_state = State::Empty;
         }
-        // else if (is_space(input))
-        // {
-        //     if (cur_str.size() != 0)
-        //         is_token = true;
-        //     cur_state = State::Empty;
-        // }
-        // else
-        //     assert(0 && "invalid input, stop at Int");
 
         // 更新字符串
         if (is_token)
@@ -393,8 +353,6 @@ bool frontend::DFA::next(char input, Token &buf)
         if (is_letter(input))
         {
             cur_state = State::FloatLiteral;
-            // cur_state = State::Ident;
-            // is_token = true;
         }
         else if (is_operator(input))
         {
@@ -410,20 +368,12 @@ bool frontend::DFA::next(char input, Token &buf)
             is_token = true;
             cur_state = State::Empty;
         }
-        // else if (is_space(input))
-        // {
-        //     if (cur_str.size() != 0)
-        //         is_token = true;
-        //     cur_state = State::Empty;
-        // }
-        // else
-        //     assert(0 && "invalid input, stop at Float");
 
         // 更新字符串
         if (is_token)
         {
             buf.value = cur_str;
-            buf.type = TokenType::INTLTR;
+            buf.type = TokenType::FLOATLTR;
             cur_str = "";
         }
         if (cur_state != State::Empty)
