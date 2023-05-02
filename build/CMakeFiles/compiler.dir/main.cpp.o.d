@@ -191,4 +191,6 @@ CMakeFiles/compiler.dir/main.cpp.o: \
  /home/mingcheng/SimpleCompiler/./include/ir/ir_instruction.h \
  /home/mingcheng/SimpleCompiler/./include/ir/ir_function.h \
  /home/mingcheng/SimpleCompiler/./include/ir/ir_program.h \
+ /home/mingcheng/SimpleCompiler/./include/front/semantic.h \
+ /home/mingcheng/SimpleCompiler/./include/tools/ir_executor.h \
  /usr/include/c++/11/cassert /usr/include/assert.h

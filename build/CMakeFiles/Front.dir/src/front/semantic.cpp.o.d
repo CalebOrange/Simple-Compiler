@@ -1,8 +1,9 @@
-CMakeFiles/Front.dir/src/front/abstract_syntax_tree.cpp.o: \
- /home/mingcheng/SimpleCompiler/src/front/abstract_syntax_tree.cpp \
+CMakeFiles/Front.dir/src/front/semantic.cpp.o: \
+ /home/mingcheng/SimpleCompiler/src/front/semantic.cpp \
  /usr/include/stdc-predef.h \
- /home/mingcheng/SimpleCompiler/./include/front/abstract_syntax_tree.h \
- /home/mingcheng/SimpleCompiler/./include/front/token.h \
+ /home/mingcheng/SimpleCompiler/./include/front/semantic.h \
+ /home/mingcheng/SimpleCompiler/./include/ir/ir.h \
+ /home/mingcheng/SimpleCompiler/./include/ir/ir_operand.h \
  /usr/include/c++/11/string \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h \
@@ -129,10 +130,19 @@ CMakeFiles/Front.dir/src/front/abstract_syntax_tree.cpp.o: \
  /usr/include/c++/11/bits/functional_hash.h \
  /usr/include/c++/11/bits/hash_bytes.h \
  /usr/include/c++/11/bits/basic_string.tcc \
+ /home/mingcheng/SimpleCompiler/./include/ir/ir_operator.h \
+ /home/mingcheng/SimpleCompiler/./include/ir/ir_instruction.h \
+ /usr/include/c++/11/vector /usr/include/c++/11/bits/stl_uninitialized.h \
+ /usr/include/c++/11/bits/stl_vector.h \
+ /usr/include/c++/11/bits/stl_bvector.h \
+ /usr/include/c++/11/bits/vector.tcc \
+ /home/mingcheng/SimpleCompiler/./include/ir/ir_function.h \
+ /home/mingcheng/SimpleCompiler/./include/ir/ir_program.h \
+ /home/mingcheng/SimpleCompiler/./include/front/abstract_syntax_tree.h \
+ /home/mingcheng/SimpleCompiler/./include/front/token.h \
  /home/mingcheng/SimpleCompiler/./include/json/json.h \
  /usr/include/c++/11/cstring /usr/include/string.h /usr/include/strings.h \
- /usr/include/c++/11/memory /usr/include/c++/11/bits/stl_uninitialized.h \
- /usr/include/c++/11/bits/stl_tempbuf.h \
+ /usr/include/c++/11/memory /usr/include/c++/11/bits/stl_tempbuf.h \
  /usr/include/c++/11/bits/stl_raw_storage_iter.h \
  /usr/include/c++/11/bits/align.h /usr/include/c++/11/bit \
  /usr/include/c++/11/bits/uses_allocator.h \
@@ -173,18 +183,9 @@ CMakeFiles/Front.dir/src/front/abstract_syntax_tree.cpp.o: \
  /usr/include/c++/11/bits/sstream.tcc /usr/include/c++/11/map \
  /usr/include/c++/11/bits/stl_tree.h /usr/include/c++/11/bits/stl_map.h \
  /usr/include/c++/11/bits/stl_multimap.h \
- /usr/include/c++/11/bits/erase_if.h /usr/include/c++/11/vector \
- /usr/include/c++/11/bits/stl_vector.h \
- /usr/include/c++/11/bits/stl_bvector.h \
- /usr/include/c++/11/bits/vector.tcc /usr/include/c++/11/deque \
+ /usr/include/c++/11/bits/erase_if.h /usr/include/c++/11/deque \
  /usr/include/c++/11/bits/stl_deque.h /usr/include/c++/11/bits/deque.tcc \
  /usr/include/c++/11/stack /usr/include/c++/11/bits/stl_stack.h \
- /home/mingcheng/SimpleCompiler/./include/ir/ir.h \
- /home/mingcheng/SimpleCompiler/./include/ir/ir_operand.h \
- /home/mingcheng/SimpleCompiler/./include/ir/ir_operator.h \
- /home/mingcheng/SimpleCompiler/./include/ir/ir_instruction.h \
- /home/mingcheng/SimpleCompiler/./include/ir/ir_function.h \
- /home/mingcheng/SimpleCompiler/./include/ir/ir_program.h \
  /usr/include/c++/11/set /usr/include/c++/11/bits/stl_set.h \
  /usr/include/c++/11/bits/stl_multiset.h /usr/include/c++/11/cassert \
  /usr/include/assert.h

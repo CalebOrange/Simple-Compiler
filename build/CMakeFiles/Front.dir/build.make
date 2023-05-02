@@ -97,10 +97,24 @@ CMakeFiles/Front.dir/src/front/lexical.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Front.dir/src/front/lexical.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/mingcheng/SimpleCompiler/src/front/lexical.cpp -o CMakeFiles/Front.dir/src/front/lexical.cpp.s
 
+CMakeFiles/Front.dir/src/front/semantic.cpp.o: CMakeFiles/Front.dir/flags.make
+CMakeFiles/Front.dir/src/front/semantic.cpp.o: ../src/front/semantic.cpp
+CMakeFiles/Front.dir/src/front/semantic.cpp.o: CMakeFiles/Front.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mingcheng/SimpleCompiler/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/Front.dir/src/front/semantic.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Front.dir/src/front/semantic.cpp.o -MF CMakeFiles/Front.dir/src/front/semantic.cpp.o.d -o CMakeFiles/Front.dir/src/front/semantic.cpp.o -c /home/mingcheng/SimpleCompiler/src/front/semantic.cpp
+
+CMakeFiles/Front.dir/src/front/semantic.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Front.dir/src/front/semantic.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/mingcheng/SimpleCompiler/src/front/semantic.cpp > CMakeFiles/Front.dir/src/front/semantic.cpp.i
+
+CMakeFiles/Front.dir/src/front/semantic.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Front.dir/src/front/semantic.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/mingcheng/SimpleCompiler/src/front/semantic.cpp -o CMakeFiles/Front.dir/src/front/semantic.cpp.s
+
 CMakeFiles/Front.dir/src/front/syntax.cpp.o: CMakeFiles/Front.dir/flags.make
 CMakeFiles/Front.dir/src/front/syntax.cpp.o: ../src/front/syntax.cpp
 CMakeFiles/Front.dir/src/front/syntax.cpp.o: CMakeFiles/Front.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mingcheng/SimpleCompiler/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/Front.dir/src/front/syntax.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mingcheng/SimpleCompiler/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/Front.dir/src/front/syntax.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Front.dir/src/front/syntax.cpp.o -MF CMakeFiles/Front.dir/src/front/syntax.cpp.o.d -o CMakeFiles/Front.dir/src/front/syntax.cpp.o -c /home/mingcheng/SimpleCompiler/src/front/syntax.cpp
 
 CMakeFiles/Front.dir/src/front/syntax.cpp.i: cmake_force
@@ -114,7 +128,7 @@ CMakeFiles/Front.dir/src/front/syntax.cpp.s: cmake_force
 CMakeFiles/Front.dir/src/front/token.cpp.o: CMakeFiles/Front.dir/flags.make
 CMakeFiles/Front.dir/src/front/token.cpp.o: ../src/front/token.cpp
 CMakeFiles/Front.dir/src/front/token.cpp.o: CMakeFiles/Front.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mingcheng/SimpleCompiler/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/Front.dir/src/front/token.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mingcheng/SimpleCompiler/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/Front.dir/src/front/token.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Front.dir/src/front/token.cpp.o -MF CMakeFiles/Front.dir/src/front/token.cpp.o.d -o CMakeFiles/Front.dir/src/front/token.cpp.o -c /home/mingcheng/SimpleCompiler/src/front/token.cpp
 
 CMakeFiles/Front.dir/src/front/token.cpp.i: cmake_force
@@ -129,6 +143,7 @@ CMakeFiles/Front.dir/src/front/token.cpp.s: cmake_force
 Front_OBJECTS = \
 "CMakeFiles/Front.dir/src/front/abstract_syntax_tree.cpp.o" \
 "CMakeFiles/Front.dir/src/front/lexical.cpp.o" \
+"CMakeFiles/Front.dir/src/front/semantic.cpp.o" \
 "CMakeFiles/Front.dir/src/front/syntax.cpp.o" \
 "CMakeFiles/Front.dir/src/front/token.cpp.o"
 
@@ -137,11 +152,12 @@ Front_EXTERNAL_OBJECTS =
 
 ../bin/libFront.a: CMakeFiles/Front.dir/src/front/abstract_syntax_tree.cpp.o
 ../bin/libFront.a: CMakeFiles/Front.dir/src/front/lexical.cpp.o
+../bin/libFront.a: CMakeFiles/Front.dir/src/front/semantic.cpp.o
 ../bin/libFront.a: CMakeFiles/Front.dir/src/front/syntax.cpp.o
 ../bin/libFront.a: CMakeFiles/Front.dir/src/front/token.cpp.o
 ../bin/libFront.a: CMakeFiles/Front.dir/build.make
 ../bin/libFront.a: CMakeFiles/Front.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/mingcheng/SimpleCompiler/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX static library ../bin/libFront.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/mingcheng/SimpleCompiler/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CXX static library ../bin/libFront.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/Front.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/Front.dir/link.txt --verbose=$(VERBOSE)
 

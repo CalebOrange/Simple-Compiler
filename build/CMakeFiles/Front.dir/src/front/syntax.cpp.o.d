@@ -186,5 +186,6 @@ CMakeFiles/Front.dir/src/front/syntax.cpp.o: \
  /home/mingcheng/SimpleCompiler/./include/ir/ir_instruction.h \
  /home/mingcheng/SimpleCompiler/./include/ir/ir_function.h \
  /home/mingcheng/SimpleCompiler/./include/ir/ir_program.h \
- /usr/include/c++/11/iostream /usr/include/c++/11/cassert \
- /usr/include/assert.h
+ /usr/include/c++/11/set /usr/include/c++/11/bits/stl_set.h \
+ /usr/include/c++/11/bits/stl_multiset.h /usr/include/c++/11/iostream \
+ /usr/include/c++/11/cassert /usr/include/assert.h
