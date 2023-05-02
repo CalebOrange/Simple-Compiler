@@ -58,32 +58,7 @@ CompUnit *Parser::get_abstract_syntax_tree()
 {
     CompUnit *root = new CompUnit();
 
-    // CompUnit -> (Decl | FuncDef) [CompUnit]
-    if (CUR_TOKEN_IS(CONSTTK))
-    {
-        PARSE(decl, Decl);
-    }
-    else if (CUR_TOKEN_IS(VOIDTK))
-    {
-        PARSE(func_def, FuncDef);
-    }
-    else if (CUR_TOKEN_IS(INTTK) || CUR_TOKEN_IS(FLOATTK))
-    {
-
-        if (index < token_stream.size() - 2 && token_stream[index + 2].type == TokenType::LPARENT)
-        {
-            PARSE(func_def, FuncDef);
-        }
-        else
-        {
-            PARSE(decl, Decl);
-        }
-    }
-
-    if (CUR_TOKEN_IS(CONSTTK) || CUR_TOKEN_IS(VOIDTK) || CUR_TOKEN_IS(INTTK) || CUR_TOKEN_IS(FLOATTK))
-    {
-        PARSE(comp_unit, CompUnit);
-    }
+    parseCompUnit(root);
 
     return root;
 }
