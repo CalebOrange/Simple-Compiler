@@ -67,7 +67,7 @@ Term *Parser::parseTerm(AstNode *parent, TokenType expected)
 {
     if (token_stream[index].type == expected)
     {
-        std::cout << "TERM: " << toString(parent->type) << "\t" << token_stream[index].value << '\n';
+        // std::cout << "TERM: " << toString(parent->type) << "\t" << token_stream[index].value << '\n';
         Term *node = new Term(token_stream[index], parent);
         index++;
         return node;

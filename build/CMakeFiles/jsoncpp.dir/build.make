@@ -73,15 +73,15 @@ CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.o: CMakeFiles/jsoncpp
 CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.o: ../src/third_party/jsoncpp/jsoncpp.cpp
 CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.o: CMakeFiles/jsoncpp.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mingcheng/SimpleCompiler/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.o -MF CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.o.d -o CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.o -c /home/mingcheng/SimpleCompiler/src/third_party/jsoncpp/jsoncpp.cpp
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.o -MF CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.o.d -o CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.o -c /home/mingcheng/SimpleCompiler/src/third_party/jsoncpp/jsoncpp.cpp
 
 CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/mingcheng/SimpleCompiler/src/third_party/jsoncpp/jsoncpp.cpp > CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.i
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/mingcheng/SimpleCompiler/src/third_party/jsoncpp/jsoncpp.cpp > CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.i
 
 CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/mingcheng/SimpleCompiler/src/third_party/jsoncpp/jsoncpp.cpp -o CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.s
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/mingcheng/SimpleCompiler/src/third_party/jsoncpp/jsoncpp.cpp -o CMakeFiles/jsoncpp.dir/src/third_party/jsoncpp/jsoncpp.cpp.s
 
 # Object files for target jsoncpp
 jsoncpp_OBJECTS = \
