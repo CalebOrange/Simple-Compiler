@@ -15,3 +15,5 @@ script/*
 # test framework
 test/output/*
 test/__pycache__/*
+
+test/
