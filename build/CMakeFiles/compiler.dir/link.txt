@@ -1,1 +1,0 @@
-/usr/bin/g++ -Wall -g CMakeFiles/compiler.dir/main.cpp.o -o ../bin/compiler   -L/home/mingcheng/SimpleCompiler/./lib  -Wl,-rpath,/home/mingcheng/SimpleCompiler/./lib -lTools ../bin/libFront.a -lIR ../bin/libjsoncpp.a 
