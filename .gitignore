@@ -17,3 +17,4 @@ test/output/*
 test/__pycache__/*
 
 test/
+.vscode/launch.json
