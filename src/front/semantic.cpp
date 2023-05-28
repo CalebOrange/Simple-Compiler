@@ -679,7 +679,7 @@ void frontend::Analyzer::analysisStmt(Stmt *root, std::vector<Instruction *> &in
     {
         GET_CHILD_PTR(lval, LVal, 0);
         // 获取左值
-        analysisLVal(lval, instructions);
+        analysisLVal(lval, instructions, true);
 
         GET_CHILD_PTR(exp, Exp, 2);
         // exp->v = lval->v;
@@ -948,16 +948,17 @@ void frontend::Analyzer::analysisLOrExp(LOrExp *root, std::vector<Instruction *>
         analysisLOrExp(lorexp, second_lor_instructions);
         // std::cout << "back LOrExp: " << toString(lorexp->t) + " " + lorexp->v << std::endl;
 
-        if(root->t == ir::Type::IntLiteral && lorexp->t == ir::Type::IntLiteral){
+        if (root->t == ir::Type::IntLiteral && lorexp->t == ir::Type::IntLiteral)
+        {
             root->v = std::to_string(std::stoi(root->v) || std::stoi(lorexp->v));
             return;
         }
 
         // !4
-        auto temp_name = get_temp().name;
+        // auto temp_name = get_temp().name;
         second_lor_instructions.push_back(new ir::Instruction({root->v, root->t},
                                                               {lorexp->v, lorexp->t},
-                                                              {temp_name, ir::Type::Int},
+                                                              {root->v, ir::Type::Int},
                                                               ir::Operator::_or));
 
         // auto temp_name = get_temp().name;
@@ -973,7 +974,7 @@ void frontend::Analyzer::analysisLOrExp(LOrExp *root, std::vector<Instruction *>
                                                    ir::Operator::_goto));
 
         instructions.insert(instructions.end(), second_lor_instructions.begin(), second_lor_instructions.end());
-        root->v = temp_name;
+        // root->v = temp_name;
     }
 }
 
@@ -997,16 +998,17 @@ void frontend::Analyzer::analysisLAndExp(LAndExp *root, vector<ir::Instruction *
         vector<ir::Instruction *> second_and_instructions;
         analysisLAndExp(landexp, second_and_instructions);
 
-        if(root->t == ir::Type::IntLiteral && landexp->t == ir::Type::IntLiteral) {
+        if (root->t == ir::Type::IntLiteral && landexp->t == ir::Type::IntLiteral)
+        {
             root->v = std::to_string(std::stoi(root->v) && std::stoi(landexp->v));
             return;
         }
 
         // std::cout << "LAndExp: " + toString(root->t) + " " + root->v + " and " + toString(landexp->t) + " " + landexp->v << std::endl;
-        auto temp_name = get_temp().name;
+        // auto temp_name = get_temp().name;
         second_and_instructions.push_back(new ir::Instruction({root->v, root->t},
                                                               {landexp->v, landexp->t},
-                                                              {temp_name, ir::Type::Int},
+                                                              {root->v, ir::Type::Int},
                                                               ir::Operator::_and));
         // std::cout << "And Res: " << toString(root->t) + " " + root->v << std::endl;
 
@@ -1023,15 +1025,13 @@ void frontend::Analyzer::analysisLAndExp(LAndExp *root, vector<ir::Instruction *
                                                    {std::to_string(second_and_instructions.size() + 1), ir::Type::IntLiteral},
                                                    ir::Operator::_goto));
 
-        
-
         instructions.insert(instructions.end(), second_and_instructions.begin(), second_and_instructions.end());
 
         // instructions.push_back(new ir::Instruction({opposite, ir::Type::Int},
         //                                            {},
         //                                            {temp_name, ir::Type::Int},
         //                                            ir::Operator::mov));
-        root->v = temp_name;
+        // root->v = temp_name;
     }
 }
 
@@ -1058,15 +1058,15 @@ void frontend::Analyzer::analysisEqExp(EqExp *root, vector<ir::Instruction *> &i
         {
             switch (term->token.type)
             {
-                case TokenType::EQL:
-                    root->v = std::to_string(std::stoi(root->v) == std::stoi(relexp->v));
-                    break;
-                case TokenType::NEQ:
-                    root->v = std::to_string(std::stoi(root->v) != std::stoi(relexp->v));
-                    break;
-                default:
-                    assert(false);
-                    break;
+            case TokenType::EQL:
+                root->v = std::to_string(std::stoi(root->v) == std::stoi(relexp->v));
+                break;
+            case TokenType::NEQ:
+                root->v = std::to_string(std::stoi(root->v) != std::stoi(relexp->v));
+                break;
+            default:
+                assert(false);
+                break;
             }
         }
         else
@@ -1657,7 +1657,7 @@ void frontend::Analyzer::analysisPrimaryExp(PrimaryExp *root, std::vector<Instru
     {
         GET_CHILD_PTR(lval, LVal, 0);
         COPY_EXP_NODE(root, lval);
-        analysisLVal(lval, instructions);
+        analysisLVal(lval, instructions, false);
         COPY_EXP_NODE(lval, root);
     }
     else
@@ -1674,12 +1674,18 @@ void frontend::Analyzer::analysisPrimaryExp(PrimaryExp *root, std::vector<Instru
 // LVal.v
 // LVal.t
 // LVal.i array index, legal if t is IntPtr or FloatPtr
-void frontend::Analyzer::analysisLVal(LVal *root, vector<ir::Instruction *> &instructions)
+void frontend::Analyzer::analysisLVal(LVal *root, vector<ir::Instruction *> &instructions, bool is_left = false)
 {
     GET_CHILD_PTR(ident, Term, 0);
     auto var = symbol_table.get_ste(ident->token.value);
 
     root->i = 0;
+    if (is_left)
+    {
+        root->t = var.operand.type;
+        root->v = var.operand.name;
+        return;
+    }
 
     // std::cout << "LVal: " << toString(var.operand.type) << " "
     //           << var.operand.name << " "
@@ -1704,7 +1710,11 @@ void frontend::Analyzer::analysisLVal(LVal *root, vector<ir::Instruction *> &ins
             break;
         default:
             root->t = var.operand.type;
-            root->v = var.operand.name;
+            root->v = get_temp().name;
+            instructions.push_back(new ir::Instruction({var.operand.name, var.operand.type},
+                                                       {},
+                                                       {root->v, var.operand.type},
+                                                       ir::Operator::mov));
             break;
         }
     }

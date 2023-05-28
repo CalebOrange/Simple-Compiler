@@ -124,8 +124,8 @@ namespace frontend
         void analysisFuncDef(FuncDef *, ir::Function &);
         void analysisFuncType(FuncType *, ir::Type &);
         void analysisFuncFParams(FuncFParams *, vector<ir::Operand> &);
-        void analysisFuncFParam(FuncFParam *, vector<ir::Operand> &);   // TODO
-        
+        void analysisFuncFParam(FuncFParam *, vector<ir::Operand> &); // TODO
+
         void analysisBlock(Block *, vector<ir::Instruction *> &);
         void analysisBlockItem(BlockItem *, vector<ir::Instruction *> &);
 
@@ -138,14 +138,14 @@ namespace frontend
         void analysisFuncRParams(FuncRParams *, vector<ir::Operand> &, vector<ir::Instruction *> &);
         void analysisPrimaryExp(PrimaryExp *, vector<ir::Instruction *> &);
         void analysisNumber(Number *, vector<ir::Instruction *> &);
-        void analysisLVal(LVal *, vector<ir::Instruction *> &);
+        void analysisLVal(LVal *, vector<ir::Instruction *> &, bool);
 
         void analysisCond(Cond *, vector<ir::Instruction *> &);
         void analysisLOrExp(LOrExp *, vector<ir::Instruction *> &);
         void analysisLAndExp(LAndExp *, vector<ir::Instruction *> &);
         void analysisEqExp(EqExp *, vector<ir::Instruction *> &);
         void analysisRelExp(RelExp *, vector<ir::Instruction *> &);
-        
+
         void analysisConstDef(ConstDef *, vector<ir::Instruction *> &);
         void analysisConstInitVal(ConstInitVal *, vector<ir::Instruction *> &);
 
