@@ -178,9 +178,12 @@ void frontend::Analyzer::analysisCompUnit(CompUnit *root)
         // 生成一个新的函数
         auto a_new_func = Function();
         GET_CHILD_PTR(funcdef, FuncDef, 0);
+
+        symbol_table.add_scope();
         analysisFuncDef(funcdef, a_new_func);
         // 把函数添加到符号表中
         symbol_table.functions[a_new_func.name] = new Function(a_new_func);
+        symbol_table.exit_scope();
     }
 
     if (root->children.size() == 2)
@@ -677,66 +680,15 @@ void frontend::Analyzer::analysisStmt(Stmt *root, std::vector<Instruction *> &in
 {
     if (NODE_IS(LVAL, 0)) // 如果是赋值语句
     {
-        GET_CHILD_PTR(lval, LVal, 0);
-        // 获取左值
-        analysisLVal(lval, instructions, true);
-
         GET_CHILD_PTR(exp, Exp, 2);
-        // exp->v = lval->v;
         exp->v = get_temp().name;
-
         // 获取右值
         analysisExp(exp, instructions);
 
-        // std::cout << "进行赋值:" << toString(lval->t) << " " << lval->v << " = " << toString(exp->t) << " " << exp->v
-        //           << std::endl; // todelete
-        switch (exp->t)
-        {
-        case ir::Type::Int:
-        case ir::Type::IntLiteral:
-            switch (lval->t)
-            {
-            case ir::Type::Float:
-            case ir::Type::FloatPtr: // for 数组
-                instructions.push_back(new ir::Instruction({exp->v, ir::Type::Float}, {}, {exp->v, exp->t}, ir::Operator::cvt_i2f));
-                break;
-            default:
-                break;
-            }
-            break;
-        case ir::Type::Float:
-        case ir::Type::FloatLiteral:
-            switch (lval->t)
-            {
-            case ir::Type::Int:
-            case ir::Type::IntPtr: // for 数组
-                instructions.push_back(new ir::Instruction({exp->v, ir::Type::Int}, {}, {exp->v, exp->t}, ir::Operator::cvt_f2i));
-                break;
-            default:
-                break;
-            }
-            break;
-        default:
-            assert(0);
-            break;
-        }
-
-        if (lval->i) // 如果是数组
-        {
-            // 第一个操作数为数组名，第二个操作数为要存数所在数组下标，目的操作数为存入的数。示例如下：
-            //      arr[2] = 3; => store 3, arr, 2
-            instructions.push_back(new ir::Instruction({exp->v, exp->t},
-                                                       {std::to_string(lval->i), ir::Type::IntLiteral},
-                                                       {lval->v, lval->t},
-                                                       ir::Operator::store));
-        }
-        else // 如果是非数组 lval->i == 0
-        {
-            instructions.push_back(new ir::Instruction({exp->v, exp->t},
-                                                       {},
-                                                       {lval->v, lval->t},
-                                                       ir::Operator::mov));
-        }
+        GET_CHILD_PTR(lval, LVal, 0);
+        // 获取左值
+        COPY_EXP_NODE(exp, lval);
+        analysisLVal(lval, instructions, true);
     }
     else if (NODE_IS(BLOCK, 0)) // 如果是复合语句
     {
@@ -1679,20 +1631,53 @@ void frontend::Analyzer::analysisLVal(LVal *root, vector<ir::Instruction *> &ins
     GET_CHILD_PTR(ident, Term, 0);
     auto var = symbol_table.get_ste(ident->token.value);
 
-    root->i = 0;
-    if (is_left)
-    {
-        root->t = var.operand.type;
-        root->v = var.operand.name;
-        return;
-    }
-
     // std::cout << "LVal: " << toString(var.operand.type) << " "
     //           << var.operand.name << " "
     //           << "[" << var.dimension.size() << "]" << std::endl;
 
     if (root->children.size() == 1) // 如果没有下标
     {
+        if (is_left)
+        {
+            // root->t = var.operand.type;
+            // root->v = var.operand.name;
+            switch (root->t)
+            {
+            case ir::Type::Int:
+            case ir::Type::IntLiteral:
+                switch (var.operand.type)
+                {
+                case ir::Type::Float:
+                case ir::Type::FloatLiteral:
+                    instructions.push_back(new ir::Instruction({root->v, ir::Type::Float}, {}, {root->v, root->t}, ir::Operator::cvt_i2f));
+                    break;
+                default:
+                    break;
+                }
+                break;
+            case ir::Type::Float:
+            case ir::Type::FloatLiteral:
+                switch (var.operand.type)
+                {
+                case ir::Type::Int:
+                case ir::Type::IntLiteral:
+                    instructions.push_back(new ir::Instruction({root->v, ir::Type::Int}, {}, {root->v, root->t}, ir::Operator::cvt_f2i));
+                    break;
+                default:
+                    break;
+                }
+                break;
+            default:
+                break;
+            }
+
+            instructions.push_back(new ir::Instruction({root->v, root->t},
+                                                       {},
+                                                       {var.operand.name, var.operand.type},
+                                                       ir::Operator::mov));
+            return;
+        }
+
         switch (var.operand.type)
         {
         case ir::Type::IntPtr:
@@ -1720,7 +1705,6 @@ void frontend::Analyzer::analysisLVal(LVal *root, vector<ir::Instruction *> &ins
     }
     else // 如果有下标
     {
-        root->i = 1;
         std::vector<ir::Operand> load_index;
         for (size_t index = 2; index < root->children.size(); index += 3)
         {
@@ -1728,11 +1712,7 @@ void frontend::Analyzer::analysisLVal(LVal *root, vector<ir::Instruction *> &ins
                 break;
 
             GET_CHILD_PTR(exp, Exp, index);
-            // exp->v = get_temp().name;
             analysisExp(exp, instructions);
-            std::cout << "index: " << toString(exp->t) << " " << exp->v << std::endl; //! 4
-            // auto op = symbol_table.get_operand(exp->v);
-            // std::cout << toString(op.type) << " " << op.name << std::endl;
             load_index.push_back({exp->v, exp->t});
         }
 
@@ -1755,19 +1735,23 @@ void frontend::Analyzer::analysisLVal(LVal *root, vector<ir::Instruction *> &ins
                                                        ir::Operator::add));
         }
 
-        // for (size_t i = 0; i < load_index.size(); i++)
-        // {
-        //     root->i += load_index[i] * std::accumulate(var.dimension.begin() + i + 1, var.dimension.end(), 1, std::multiplies<int>());
-        // }
-        // std::cout << "root->i: " << cal_index << std::endl;
-
         // 取数指令，这里load指从数组中取数。第一个操作数为数组名，第二个操作数为要取数所在数组下标，目的操作数为取数存放变量。示例如下：
         //      a = arr[2]; => load a, arr, 2
-        //      ir::Operand temp = get_temp();
-        instructions.push_back(new ir::Instruction(var.operand,
-                                                   res_index,
-                                                   {root->v, root->t},
-                                                   ir::Operator::load));
+        if (is_left)
+        {
+            instructions.push_back(new ir::Instruction(var.operand,
+                                                       res_index,
+                                                       {root->v, root->t},
+                                                       ir::Operator::store));
+        }
+        else
+        {
+            root->t = (var.operand.type == ir::Type::IntPtr) ? ir::Type::Int : ir::Type::Float;
+            instructions.push_back(new ir::Instruction(var.operand,
+                                                       res_index,
+                                                       {root->v, root->t},
+                                                       ir::Operator::load));
+        }
     }
 }
 
