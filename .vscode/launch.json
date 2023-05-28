@@ -1,7 +1,28 @@
 {
-    // 使用 IntelliSense 了解相关属性。 
-    // 悬停以查看现有属性的描述。
-    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
-    "configurations": []
-}
+    "configurations": [
+      {
+        "name": "debugger",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/bin/compiler",
+        "args": [
+          "test/testcase/basic/01_var_defn2.sy",
+          "-s2",
+          "-e",
+          "./test/output/basic/01_var_defn2.out"
+        ],
+        "cwd": "${workspaceFolder}",
+        "MIMode": "gdb",
+        "miDebuggerPath": "gdb",
+        "setupCommands": [
+          {
+              "description": "为 gdb 启用整齐打印",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+          }
+      ]
+      }
+    ]
+  }
+  

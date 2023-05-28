@@ -89,6 +89,8 @@ namespace frontend
          * @return STE
          */
         STE get_ste(string id) const;
+
+        void add_operand(std::string name, STE ste);
     };
 
     // singleton class
@@ -110,11 +112,21 @@ namespace frontend
         Analyzer(const Analyzer &) = delete;
         Analyzer &operator=(const Analyzer &) = delete;
 
+        ir::Operand get_temp(ir::Type);
+
         // analysis functions
         void analysisCompUnit(CompUnit *);
+
+        void analysisDecl(Decl *, vector<ir::Instruction *> &);
+        void analysisConstDecl(ConstDecl *, vector<ir::Instruction *> &);
+        void analysisConstDef(ConstDef *, vector<ir::Instruction *> &, ir::Type);
+
         void analysisFuncDef(FuncDef *, ir::Function &);
-        void analysisFuncType(FuncType *, ir::Function &);
-        void analysisBlock(Block *, ir::Function &);
+        void analysisFuncType(FuncType *, ir::Type &);
+        void analysisFuncFParams(FuncFParams *, vector<ir::Operand> &);
+        void analysisFuncFParam(FuncFParam *, vector<ir::Operand> &);   // TODO
+        
+        void analysisBlock(Block *, vector<ir::Instruction *> &);
         void analysisBlockItem(BlockItem *, vector<ir::Instruction *> &);
 
         void analysisStmt(Stmt *, vector<ir::Instruction *> &);
@@ -122,14 +134,26 @@ namespace frontend
         void analysisAddExp(AddExp *, vector<ir::Instruction *> &);
         void analysisMulExp(MulExp *, vector<ir::Instruction *> &);
         void analysisUnaryExp(UnaryExp *, vector<ir::Instruction *> &);
+        void analysisUnaryOp(UnaryOp *, vector<ir::Instruction *> &);
+        void analysisFuncRParams(FuncRParams *, vector<ir::Operand> &, vector<ir::Instruction *> &);
         void analysisPrimaryExp(PrimaryExp *, vector<ir::Instruction *> &);
-        void analysisNumber(Number *,  vector<ir::Instruction *> &);
+        void analysisNumber(Number *, vector<ir::Instruction *> &);
+        void analysisLVal(LVal *, vector<ir::Instruction *> &);
 
-        void analysisDecl(Decl *, vector<ir::Instruction *> &);
-        void analysisConstDecl(ConstDecl *, vector<ir::Instruction *> &);
-        void analysisBType(BType *, vector<ir::Instruction *> &);
+        void analysisCond(Cond *, vector<ir::Instruction *> &);
+        void analysisLOrExp(LOrExp *, vector<ir::Instruction *> &);
+        void analysisLAndExp(LAndExp *, vector<ir::Instruction *> &);
+        void analysisEqExp(EqExp *, vector<ir::Instruction *> &);
+        void analysisRelExp(RelExp *, vector<ir::Instruction *> &);
+        
         void analysisConstDef(ConstDef *, vector<ir::Instruction *> &);
         void analysisConstInitVal(ConstInitVal *, vector<ir::Instruction *> &);
+
+        void analysisVarDecl(VarDecl *, vector<ir::Instruction *> &);
+        void analysisBType(BType *);
+        void analysisVarDef(VarDef *, vector<ir::Instruction *> &, ir::Type);
+        void analysisConstExp(ConstExp *, vector<ir::Instruction *> &);
+        void analysisInitVal(InitVal *, vector<ir::Instruction *> &);
     };
 
 } // namespace frontend
