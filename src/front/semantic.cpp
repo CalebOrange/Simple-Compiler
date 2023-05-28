@@ -84,7 +84,7 @@ void frontend::SymbolTable::exit_scope()
 
 string frontend::SymbolTable::get_scoped_name(string id) const
 {
-    return id + std::to_string(scope_stack.size());
+    return id + "_" + std::to_string(scope_stack.size());
 }
 
 Operand frontend::SymbolTable::get_operand(string id) const
@@ -931,26 +931,49 @@ void frontend::Analyzer::analysisLOrExp(LOrExp *root, std::vector<Instruction *>
     //                                            {},
     //                                            {root->v, ir::Type::Int},
     //                                            ir::Operator::def));
+    // std::cout << "LOrExp: " << toString(root->t) + " " + root->v << std::endl;
+    // auto lorexp_name = root->v;
     GET_CHILD_PTR(landexp, LAndExp, 0);
     COPY_EXP_NODE(root, landexp);
     analysisLAndExp(landexp, instructions);
     COPY_EXP_NODE(landexp, root);
+    // std::cout << "back LOrExp: " << toString(root->t) + " " + root->v << std::endl;
 
     for (size_t i = 2; i < root->children.size(); i += 2) // 如果有多个LOrExp
     {
         GET_CHILD_PTR(lorexp, LOrExp, i);
-        analysisLOrExp(lorexp, instructions);
+        vector<Instruction *> second_lor_instructions;
+        // lorexp->v = get_temp().name;
+        // std::cout << "LOrExp: " << toString(lorexp->t) + " " + lorexp->v << std::endl;
+        analysisLOrExp(lorexp, second_lor_instructions);
+        // std::cout << "back LOrExp: " << toString(lorexp->t) + " " + lorexp->v << std::endl;
 
-        GET_CHILD_PTR(term, Term, i - 1);
+        if(root->t == ir::Type::IntLiteral && lorexp->t == ir::Type::IntLiteral){
+            root->v = std::to_string(std::stoi(root->v) || std::stoi(lorexp->v));
+            return;
+        }
+
+        // !4
         auto temp_name = get_temp().name;
+        second_lor_instructions.push_back(new ir::Instruction({root->v, root->t},
+                                                              {lorexp->v, lorexp->t},
+                                                              {temp_name, ir::Type::Int},
+                                                              ir::Operator::_or));
 
+        // auto temp_name = get_temp().name;
+        // instructions.push_back(new ir::Instruction({root->v, root->t},
+        //                                            {},
+        //                                            {temp_name, ir::Type::Int},
+        //                                            ir::Operator::mov));
+
+        // 如果第一个操作数为1，跳过后面的操作数
         instructions.push_back(new ir::Instruction({root->v, root->t},
-                                                   {lorexp->v, lorexp->t},
-                                                   {temp_name, ir::Type::Int},
-                                                   ir::Operator::_or));
+                                                   {},
+                                                   {std::to_string(second_lor_instructions.size() + 1), ir::Type::IntLiteral},
+                                                   ir::Operator::_goto));
 
+        instructions.insert(instructions.end(), second_lor_instructions.begin(), second_lor_instructions.end());
         root->v = temp_name;
-        root->t = ir::Type::Int;
     }
 }
 
@@ -971,18 +994,44 @@ void frontend::Analyzer::analysisLAndExp(LAndExp *root, vector<ir::Instruction *
     for (size_t i = 2; i < root->children.size(); i += 2) // 如果有多个LAndExp
     {
         GET_CHILD_PTR(landexp, LAndExp, i);
-        analysisLAndExp(landexp, instructions);
+        vector<ir::Instruction *> second_and_instructions;
+        analysisLAndExp(landexp, second_and_instructions);
 
-        GET_CHILD_PTR(term, Term, i - 1);
+        if(root->t == ir::Type::IntLiteral && landexp->t == ir::Type::IntLiteral) {
+            root->v = std::to_string(std::stoi(root->v) && std::stoi(landexp->v));
+            return;
+        }
+
+        // std::cout << "LAndExp: " + toString(root->t) + " " + root->v + " and " + toString(landexp->t) + " " + landexp->v << std::endl;
         auto temp_name = get_temp().name;
+        second_and_instructions.push_back(new ir::Instruction({root->v, root->t},
+                                                              {landexp->v, landexp->t},
+                                                              {temp_name, ir::Type::Int},
+                                                              ir::Operator::_and));
+        // std::cout << "And Res: " << toString(root->t) + " " + root->v << std::endl;
 
+        auto opposite = get_temp().name;
+        // 对第一个操作数取反
         instructions.push_back(new ir::Instruction({root->v, root->t},
-                                                   {landexp->v, landexp->t},
-                                                   {temp_name, ir::Type::Int},
-                                                   ir::Operator::_and));
+                                                   {},
+                                                   {opposite, ir::Type::Int},
+                                                   ir::Operator::_not));
 
+        // 如果第一个操作数为0（取反为1），跳过后面的操作数
+        instructions.push_back(new ir::Instruction({opposite, ir::Type::Int},
+                                                   {},
+                                                   {std::to_string(second_and_instructions.size() + 1), ir::Type::IntLiteral},
+                                                   ir::Operator::_goto));
+
+        
+
+        instructions.insert(instructions.end(), second_and_instructions.begin(), second_and_instructions.end());
+
+        // instructions.push_back(new ir::Instruction({opposite, ir::Type::Int},
+        //                                            {},
+        //                                            {temp_name, ir::Type::Int},
+        //                                            ir::Operator::mov));
         root->v = temp_name;
-        root->t = ir::Type::Int;
     }
 }
 
@@ -1005,32 +1054,50 @@ void frontend::Analyzer::analysisEqExp(EqExp *root, vector<ir::Instruction *> &i
         // std::cout << toString(relexp->t)+ " " << relexp->v << std::endl;
 
         GET_CHILD_PTR(term, Term, i - 1);
-        auto temp_name = get_temp().name;
+        if (root->t == ir::Type::IntLiteral && relexp->t == ir::Type::IntLiteral)
+        {
+            switch (term->token.type)
+            {
+                case TokenType::EQL:
+                    root->v = std::to_string(std::stoi(root->v) == std::stoi(relexp->v));
+                    break;
+                case TokenType::NEQ:
+                    root->v = std::to_string(std::stoi(root->v) != std::stoi(relexp->v));
+                    break;
+                default:
+                    assert(false);
+                    break;
+            }
+        }
+        else
+        {
+            auto temp_name = get_temp().name;
 
-        switch (term->token.type) // TODO: 只考虑整型
-        {
-        case TokenType::EQL: // 整型变量==运算，逻辑运算结果用变量表示。
-        {
-            instructions.push_back(new ir::Instruction({root->v, root->t},
-                                                       {relexp->v, relexp->t},
-                                                       {temp_name, ir::Type::Int},
-                                                       ir::Operator::eq));
-            break;
+            switch (term->token.type) // TODO: 只考虑整型
+            {
+            case TokenType::EQL: // 整型变量==运算，逻辑运算结果用变量表示。
+            {
+                instructions.push_back(new ir::Instruction({root->v, root->t},
+                                                           {relexp->v, relexp->t},
+                                                           {temp_name, ir::Type::Int},
+                                                           ir::Operator::eq));
+                break;
+            }
+            case TokenType::NEQ:
+            {
+                instructions.push_back(new ir::Instruction({root->v, root->t},
+                                                           {relexp->v, relexp->t},
+                                                           {temp_name, ir::Type::Int},
+                                                           ir::Operator::neq));
+                break;
+            }
+            default:
+                assert(false);
+                break;
+            }
+            root->v = temp_name;
+            root->t = ir::Type::Int;
         }
-        case TokenType::NEQ:
-        {
-            instructions.push_back(new ir::Instruction({root->v, root->t},
-                                                       {relexp->v, relexp->t},
-                                                       {temp_name, ir::Type::Int},
-                                                       ir::Operator::neq));
-            break;
-        }
-        default:
-            assert(false);
-            break;
-        }
-        root->v = temp_name;
-        root->t = ir::Type::Int;
     }
 }
 
@@ -1054,10 +1121,10 @@ void frontend::Analyzer::analysisRelExp(RelExp *root, vector<ir::Instruction *> 
         analysisAddExp(addexp, instructions);
 
         GET_CHILD_PTR(term, Term, i - 1);
-
-        if (root->is_computable && addexp->is_computable)
+        // std::cout << toString(root->t) + " " + root->v + " " + toString(term->token.type) + " " + toString(addexp->t) + " " + addexp->v << std::endl;
+        if (root->t == ir::Type::IntLiteral && addexp->t == ir::Type::IntLiteral)
         {
-            root->t = ir::Type::IntLiteral;
+
             switch (term->token.type)
             {
             case TokenType::LSS:
