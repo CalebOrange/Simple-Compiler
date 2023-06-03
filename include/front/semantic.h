@@ -121,7 +121,7 @@ namespace frontend
         void analysisConstDecl(ConstDecl *, vector<ir::Instruction *> &);
         void analysisConstDef(ConstDef *, vector<ir::Instruction *> &, ir::Type);
 
-        void analysisFuncDef(FuncDef *, ir::Function &);
+        void analysisFuncDef(FuncDef *);
         void analysisFuncType(FuncType *, ir::Type &);
         void analysisFuncFParams(FuncFParams *, vector<ir::Operand> &);
         void analysisFuncFParam(FuncFParam *, vector<ir::Operand> &); // TODO

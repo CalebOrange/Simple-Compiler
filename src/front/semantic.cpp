@@ -134,7 +134,7 @@ ir::Program frontend::Analyzer::get_ir_program(CompUnit *root)
             int size = std::accumulate(p.second.dimension.begin(), p.second.dimension.end(), 1, std::multiplies<int>());
             // 添加数组
             program.globalVal.push_back({p.second.operand, size});
-            break;
+            continue;
         }
         // 添加变量
         program.globalVal.push_back({p.second.operand});
@@ -176,13 +176,12 @@ void frontend::Analyzer::analysisCompUnit(CompUnit *root)
     else // 如果是函数定义
     {
         // 生成一个新的函数
-        auto a_new_func = Function();
+        // auto a_new_func = Function();
         GET_CHILD_PTR(funcdef, FuncDef, 0);
-
         symbol_table.add_scope();
-        analysisFuncDef(funcdef, a_new_func);
+        analysisFuncDef(funcdef);
+        // symbol_table.functions[a_new_func.name] = new Function(a_new_func);
         // 把函数添加到符号表中
-        symbol_table.functions[a_new_func.name] = new Function(a_new_func);
         symbol_table.exit_scope();
     }
 
@@ -542,26 +541,30 @@ void frontend::Analyzer::analysisInitVal(InitVal *root, vector<ir::Instruction *
 // Function(name, returnType);
 // Function(name, ParameterList(vector<Operand>), returnType);
 // Function.addInst(Instruction* inst);
-void frontend::Analyzer::analysisFuncDef(FuncDef *root, ir::Function &function)
+void frontend::Analyzer::analysisFuncDef(FuncDef *root)
 {
+
+    auto a_new_func = new Function();
     // 生成函数返回值类型
     GET_CHILD_PTR(functype, FuncType, 0);
-    analysisFuncType(functype, function.returnType);
+    analysisFuncType(functype, a_new_func->returnType);
 
     // 生成函数名
     GET_CHILD_PTR(ident, Term, 1);
-    function.name = ident->token.value;
+    a_new_func->name = ident->token.value;
 
     if (NODE_IS(FUNCFPARAMS, 3)) // 如果有参数
     {
         // 生成函数参数列表
         GET_CHILD_PTR(funcfparams, FuncFParams, 3);
-        analysisFuncFParams(funcfparams, function.ParameterList);
+        analysisFuncFParams(funcfparams, a_new_func->ParameterList);
     }
+
+    symbol_table.functions[a_new_func->name] = a_new_func;
 
     // 生成函数体指令到InstVec
     GET_CHILD_PTR(block, Block, root->children.size() - 1);
-    analysisBlock(block, function.InstVec);
+    analysisBlock(block, a_new_func->InstVec);
 }
 
 // FuncType -> 'void' | 'int' | 'float'
@@ -641,16 +644,12 @@ void frontend::Analyzer::analysisFuncFParam(FuncFParam *root, vector<ir::Operand
 // Block -> '{' { BlockItem } '}'
 void frontend::Analyzer::analysisBlock(Block *root, vector<ir::Instruction *> &instructions)
 {
-    // 进入新的作用域（出现‘{’就进入新的作用域）
-    symbol_table.add_scope();
     for (size_t i = 1; i < root->children.size() - 1; i++)
     {
         // 生成指令到instructions中
         GET_CHILD_PTR(blockitem, BlockItem, i);
         analysisBlockItem(blockitem, instructions);
     }
-    // 退出作用域（出现‘}’就退出作用域）
-    symbol_table.exit_scope();
 }
 
 // BlockItem -> Decl | Stmt
@@ -692,8 +691,10 @@ void frontend::Analyzer::analysisStmt(Stmt *root, std::vector<Instruction *> &in
     }
     else if (NODE_IS(BLOCK, 0)) // 如果是复合语句
     {
+        symbol_table.add_scope();
         GET_CHILD_PTR(block, Block, 0);
         analysisBlock(block, instructions);
+        symbol_table.exit_scope();
     }
     else if (NODE_IS(EXP, 0)) // 如果是表达式语句
     {
