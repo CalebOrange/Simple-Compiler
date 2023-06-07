@@ -570,6 +570,7 @@ void frontend::Analyzer::analysisFuncDef(FuncDef *root)
     // 生成函数体指令到InstVec
     GET_CHILD_PTR(block, Block, root->children.size() - 1);
     analysisBlock(block, a_new_func->InstVec);
+    a_new_func->InstVec.push_back(new ir::Instruction({}, {}, {}, ir::Operator::_return));
 }
 
 // FuncType -> 'void' | 'int' | 'float'
