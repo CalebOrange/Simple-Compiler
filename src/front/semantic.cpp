@@ -99,7 +99,7 @@ void frontend::SymbolTable::add_operand(std::string name, STE ste)
 
 ir::Operand frontend::Analyzer::get_temp(ir::Type type = ir::Type::null)
 {
-    return ir::Operand("_t" + std::to_string(tmp_cnt++), type);
+    return ir::Operand("temp_" + std::to_string(tmp_cnt++), type);
 }
 
 frontend::STE frontend::SymbolTable::get_ste(string id) const
@@ -315,10 +315,13 @@ void frontend::Analyzer::analysisConstInitVal(ConstInitVal *root, vector<ir::Ins
         GET_CHILD_PTR(constexp, ConstExp, 0);
         constexp->v = get_temp().name;
         analysisConstExp(constexp, instructions);
-        instructions.push_back(new ir::Instruction({constexp->v, constexp->t},
-                                                   {},
-                                                   {root->v, root->t},
-                                                   ir::Operator::mov));
+        if (!(constexp->v == "0" || constexp->v == "0.0"))
+        {
+            instructions.push_back(new ir::Instruction({constexp->v, constexp->t},
+                                                       {},
+                                                       {root->v, root->t},
+                                                       ir::Operator::mov));
+        }
         root->v = constexp->v;
 
         root->t = constexp->t;
@@ -496,11 +499,13 @@ void frontend::Analyzer::analysisInitVal(InitVal *root, vector<ir::Instruction *
         analysisExp(exp, instructions);
 
         // mov:第一个操作数为赋值变量，第二个操作数不使用，结果为被赋值变量
-
-        instructions.push_back(new ir::Instruction({exp->v, exp->t},
-                                                   {},
-                                                   {root->v, root->t},
-                                                   ir::Operator::mov));
+        if (!(exp->v == "0" || exp->v == "0.0"))
+        {
+            instructions.push_back(new ir::Instruction({exp->v, exp->t},
+                                                       {},
+                                                       {root->v, root->t},
+                                                       ir::Operator::mov));
+        }
 
         // std::cout << "mov: " + toString(exp->t) + " " + exp->v + " " + toString(root->t) + " " + root->v << std::endl;
         if (exp->t == ir::Type::IntLiteral)
