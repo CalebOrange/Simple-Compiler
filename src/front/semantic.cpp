@@ -31,22 +31,6 @@ using ir::Operator;
 // 判断节点是否为指定类型
 #define NODE_IS(node_type, index) root->children[index]->type == NodeType::node_type
 
-// TODO：什么情况下需要to_const？
-ir::Type to_const(ir::Type type)
-{
-    switch (type)
-    {
-    case ir::Type::Int:
-    case ir::Type::IntPtr:
-        return ir::Type::IntLiteral;
-    case ir::Type::Float:
-    case ir::Type::FloatPtr:
-        return ir::Type::FloatLiteral;
-    default:
-        return type;
-    }
-}
-
 // 获取库函数
 map<std::string, Function *> *frontend::get_lib_funcs()
 {
