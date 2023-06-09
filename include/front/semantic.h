@@ -112,7 +112,9 @@ namespace frontend
         Analyzer(const Analyzer &) = delete;
         Analyzer &operator=(const Analyzer &) = delete;
 
-        ir::Operand get_temp(ir::Type);
+        // ir::Operand get_temp(ir::Type);
+        std::string get_temp_name();
+        void delete_temp_name();
 
         // analysis functions
         void analysisCompUnit(CompUnit *);
