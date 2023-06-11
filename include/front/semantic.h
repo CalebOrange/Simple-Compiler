@@ -133,6 +133,7 @@ namespace frontend
 
         void analysisStmt(Stmt *, vector<ir::Instruction *> &);
         void analysisExp(Exp *, vector<ir::Instruction *> &);
+
         void analysisAddExp(AddExp *, vector<ir::Instruction *> &);
         void analysisMulExp(MulExp *, vector<ir::Instruction *> &);
         void analysisUnaryExp(UnaryExp *, vector<ir::Instruction *> &);

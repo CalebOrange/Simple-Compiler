@@ -3,6 +3,7 @@
 #include <cassert>
 #include <numeric>
 #include <iostream>
+#include <cmath>
 
 using ir::Function;
 using ir::Instruction;
@@ -119,6 +120,8 @@ ir::Program frontend::Analyzer::get_ir_program(CompUnit *root)
             program.globalVal.push_back({p.second.operand, size});
             continue;
         }
+        if (p.second.operand.type == ir::Type::FloatLiteral || p.second.operand.type == ir::Type::IntLiteral)
+            p.second.operand.name = p.first;
         // 添加变量
         program.globalVal.push_back({p.second.operand});
     }
@@ -1211,13 +1214,9 @@ void frontend::Analyzer::analysisRelExp(RelExp *root, vector<Instruction *> &ins
 void frontend::Analyzer::analysisExp(Exp *root, vector<Instruction *> &instructions)
 {
     GET_CHILD_PTR(addexp, AddExp, 0);
-    // addexp->v = root->v;
     COPY_EXP_NODE(root, addexp);
-    // std::cout << "in Exp " << root->v << std::endl;
     analysisAddExp(addexp, instructions);
-
     COPY_EXP_NODE(addexp, root);
-    // std::cout << "in Exp " << root->v << std::endl;
 }
 
 // AddExp -> MulExp { ('+' | '-') MulExp }
@@ -1228,116 +1227,176 @@ void frontend::Analyzer::analysisAddExp(AddExp *root, std::vector<Instruction *>
 {
     GET_CHILD_PTR(mulexp, MulExp, 0);
     COPY_EXP_NODE(root, mulexp);
-    // std::cout << "in AddExp" << root->v << std::endl;
     analysisMulExp(mulexp, instructions);
-    // std::cout << "analysisConstInitVal: " + mulexp->v << std::endl;
-
     COPY_EXP_NODE(mulexp, root);
-    // std::cout << "in AddExp " << root->v << std::endl;
+
     // 如果有多个MulExp
     for (size_t i = 2; i < root->children.size(); i += 2)
     {
         GET_CHILD_PTR(mulexp, MulExp, i);
-        // mulexp->v = get_temp_name();
+        mulexp->v = get_temp_name();
+        mulexp->t = root->t;
         analysisMulExp(mulexp, instructions);
-        auto temp_name = get_temp_name();
+
         GET_CHILD_PTR(term, Term, i - 1);
 
+        auto temp_name = get_temp_name();
         switch (root->t)
         {
         case ir::Type::Int:
-            switch (mulexp->t)
+            if (mulexp->t == ir::Type::Float || mulexp->t == ir::Type::FloatLiteral)
             {
-            case ir::Type::Int:
-            case ir::Type::IntLiteral:
-                // std::cout << toString(root->t) + " + " + toString(mulexp->t) << std::endl;
-                if (term->token.type == TokenType::PLUS)
-                {
-                    instructions.push_back(new Instruction({root->v, root->t},
-                                                           {mulexp->v, mulexp->t},
-                                                           {temp_name, ir::Type::Int},
-                                                           Operator::add));
-                }
-                else
-                {
-                    instructions.push_back(new Instruction({root->v, root->t},
-                                                           {mulexp->v, mulexp->t},
-                                                           {temp_name, ir::Type::Int},
-                                                           Operator::sub));
-                }
-                root->v = temp_name;
-                break;
-
-            default:
-                break;
+                instructions.push_back(new Instruction({mulexp->v, mulexp->t},
+                                                       {},
+                                                       {temp_name, ir::Type::Int},
+                                                       Operator::cvt_f2i));
             }
+            else
+            {
+                instructions.push_back(new Instruction({mulexp->v, mulexp->t},
+                                                       {},
+                                                       {temp_name, ir::Type::Int},
+                                                       Operator::mov));
+            }
+            if (term->token.type == TokenType::PLUS)
+            {
+                instructions.push_back(new Instruction({root->v, ir::Type::Int},
+                                                       {temp_name, ir::Type::Int},
+                                                       {temp_name, ir::Type::Int},
+                                                       Operator::add));
+            }
+            else
+            {
+                instructions.push_back(new Instruction({root->v, ir::Type::Int},
+                                                       {temp_name, ir::Type::Int},
+                                                       {temp_name, ir::Type::Int},
+                                                       Operator::sub));
+            }
+            root->v = temp_name;
+            root->t = ir::Type::Int;
+
             break;
 
         case ir::Type::IntLiteral:
-            switch (mulexp->t)
+            if (mulexp->t == ir::Type::IntLiteral)
             {
-            case ir::Type::Int:
+                if (term->token.type == TokenType::PLUS)
+                    root->v = std::to_string(std::stoi(root->v) + std::stoi(mulexp->v));
+                else
+                    root->v = std::to_string(std::stoi(root->v) - std::stoi(mulexp->v));
+            }
+            else
+            {
+                if (mulexp->t == ir::Type::Float || mulexp->t == ir::Type::FloatLiteral)
+                {
+                    instructions.push_back(new Instruction({mulexp->v, mulexp->t},
+                                                           {},
+                                                           {temp_name, ir::Type::Int},
+                                                           Operator::cvt_f2i));
+                }
+                else
+                {
+                    instructions.push_back(new Instruction({mulexp->v, mulexp->t},
+                                                           {},
+                                                           {temp_name, ir::Type::Int},
+                                                           Operator::mov));
+                }
                 if (term->token.type == TokenType::PLUS)
                 {
-                    instructions.push_back(new Instruction({root->v, root->t},
-                                                           {mulexp->v, mulexp->t},
+                    instructions.push_back(new Instruction({root->v, ir::Type::IntLiteral},
+                                                           {temp_name, ir::Type::Int},
                                                            {temp_name, ir::Type::Int},
                                                            Operator::add));
                 }
                 else
                 {
-                    instructions.push_back(new Instruction({root->v, root->t},
-                                                           {mulexp->v, mulexp->t},
+                    instructions.push_back(new Instruction({root->v, ir::Type::IntLiteral},
+                                                           {temp_name, ir::Type::Int},
                                                            {temp_name, ir::Type::Int},
                                                            Operator::sub));
                 }
                 root->v = temp_name;
                 root->t = ir::Type::Int;
-                break;
-            case ir::Type::IntLiteral:
-                if (term->token.type == TokenType::PLUS)
-                {
-                    // instructions.push_back(new Instruction({root->v, root->t},
-                    //                                            {mulexp->v, mulexp->t},
-                    //                                            {temp_name, ir::Type::IntLiteral},
-                    //                                            Operator::add));
-
-                    root->v = std::to_string(std::stoi(root->v) + std::stoi(mulexp->v));
-                }
-                else
-                {
-                    // instructions.push_back(new Instruction({root->v, root->t},
-                    //                                            {mulexp->v, mulexp->t},
-                    //                                            {temp_name, ir::Type::IntLiteral},
-                    //                                            Operator::sub));
-                    root->v = std::to_string(std::stoi(root->v) - std::stoi(mulexp->v));
-                }
-                break;
-            default:
-                break;
             }
             break;
 
+        case ir::Type::Float:
+            if (mulexp->t == ir::Type::Int || mulexp->t == ir::Type::IntLiteral)
+            {
+                instructions.push_back(new Instruction({mulexp->v, mulexp->t},
+                                                       {},
+                                                       {temp_name, ir::Type::Float},
+                                                       Operator::cvt_i2f));
+            }
+            else
+            {
+                instructions.push_back(new Instruction({mulexp->v, mulexp->t},
+                                                       {},
+                                                       {temp_name, ir::Type::Float},
+                                                       Operator::mov));
+            }
+            if (term->token.type == TokenType::PLUS)
+            {
+                instructions.push_back(new Instruction({root->v, ir::Type::Float},
+                                                       {temp_name, ir::Type::Float},
+                                                       {temp_name, ir::Type::Float},
+                                                       Operator::add));
+            }
+            else
+            {
+                instructions.push_back(new Instruction({root->v, ir::Type::Float},
+                                                       {temp_name, ir::Type::Float},
+                                                       {temp_name, ir::Type::Float},
+                                                       Operator::sub));
+            }
+            root->v = temp_name;
+            root->t = ir::Type::Float;
+            break;
+        case ir::Type::FloatLiteral:
+            if (mulexp->t == ir::Type::FloatLiteral)
+            {
+                if (term->token.type == TokenType::PLUS)
+                    root->v = std::to_string(std::stof(root->v) + std::stof(mulexp->v));
+                else
+                    root->v = std::to_string(std::stof(root->v) - std::stof(mulexp->v));
+            }
+            else
+            {
+                if (mulexp->t == ir::Type::Int || mulexp->t == ir::Type::IntLiteral)
+                {
+                    instructions.push_back(new Instruction({mulexp->v, mulexp->t},
+                                                           {},
+                                                           {temp_name, ir::Type::Float},
+                                                           Operator::cvt_i2f));
+                }
+                else
+                {
+                    instructions.push_back(new Instruction({mulexp->v, mulexp->t},
+                                                           {},
+                                                           {temp_name, ir::Type::Float},
+                                                           Operator::mov));
+                }
+                if (term->token.type == TokenType::PLUS)
+                {
+                    instructions.push_back(new Instruction({root->v, ir::Type::FloatLiteral},
+                                                           {temp_name, ir::Type::Float},
+                                                           {temp_name, ir::Type::Float},
+                                                           Operator::add));
+                }
+                else
+                {
+                    instructions.push_back(new Instruction({root->v, ir::Type::FloatLiteral},
+                                                           {temp_name, ir::Type::Float},
+                                                           {temp_name, ir::Type::Float},
+                                                           Operator::sub));
+                }
+                root->v = temp_name;
+                root->t = ir::Type::Float;
+            }
+            break;
         default:
             break;
         }
-        // auto temp_name = get_temp_name();
-        // if (term->token.type == TokenType::PLUS)
-        // {
-        //     instructions.push_back(new Instruction({root->v, root->t},
-        //                                                {mulexp->v, mulexp->t},
-        //                                                {temp_name, ir::Type::Int},
-        //                                                Operator::add));
-        // }
-        // else
-        // {
-        //     instructions.push_back(new Instruction({root->v, root->t},
-        //                                                {mulexp->v, mulexp->t},
-        //                                                {temp_name, ir::Type::Int},
-        //                                                Operator::sub));
-        // }
-        // root->v = temp_name;
-        // root->t = ir::Type::Int;
     }
 }
 
@@ -1350,78 +1409,115 @@ void frontend::Analyzer::analysisMulExp(MulExp *root, std::vector<Instruction *>
     GET_CHILD_PTR(unaryexp, UnaryExp, 0);
     COPY_EXP_NODE(root, unaryexp);
     analysisUnaryExp(unaryexp, instructions);
-    // std::cout << "analysisConstInitVal: " + unaryexp->v << std::endl;
-
     COPY_EXP_NODE(unaryexp, root);
 
     // 如果有多个UnaryExp
     for (size_t i = 2; i < root->children.size(); i += 2)
     {
         GET_CHILD_PTR(unaryexp, UnaryExp, i);
-        // unaryexp->v = get_temp_name();
-        auto temp_name = get_temp_name();
+        unaryexp->v = get_temp_name();
+        unaryexp->t = root->t;
         analysisUnaryExp(unaryexp, instructions);
 
         GET_CHILD_PTR(term, Term, i - 1);
 
+        auto temp_name = get_temp_name();
         switch (root->t)
         {
         case ir::Type::Int:
-            switch (unaryexp->t)
+            if (unaryexp->t == ir::Type::Float || unaryexp->t == ir::Type::FloatLiteral)
             {
-            case ir::Type::Int:
-            case ir::Type::IntLiteral:
+                instructions.push_back(new Instruction({unaryexp->v, unaryexp->t},
+                                                       {},
+                                                       {temp_name, ir::Type::Int},
+                                                       Operator::cvt_f2i));
+            }
+            else
+            {
+                instructions.push_back(new Instruction({unaryexp->v, unaryexp->t},
+                                                       {},
+                                                       {temp_name, ir::Type::Int},
+                                                       Operator::mov));
+            }
+            switch (term->token.type)
+            {
+            case TokenType::MULT:
+                instructions.push_back(new Instruction({root->v, ir::Type::Int},
+                                                       {temp_name, ir::Type::Int},
+                                                       {temp_name, ir::Type::Int},
+                                                       Operator::mul));
+                break;
+            case TokenType::DIV:
+                instructions.push_back(new Instruction({root->v, ir::Type::Int},
+                                                       {temp_name, ir::Type::Int},
+                                                       {temp_name, ir::Type::Int},
+                                                       Operator::div));
+                break;
+            case TokenType::MOD:
+                instructions.push_back(new Instruction({root->v, ir::Type::Int},
+                                                       {temp_name, ir::Type::Int},
+                                                       {temp_name, ir::Type::Int},
+                                                       Operator::mod));
+                break;
+            default:
+                break;
+            }
+            root->v = temp_name;
+            root->t = ir::Type::Int;
+            break;
+
+        case ir::Type::IntLiteral:
+            if (unaryexp->t == ir::Type::IntLiteral)
+            {
                 switch (term->token.type)
                 {
                 case TokenType::MULT:
-                    instructions.push_back(new Instruction({root->v, root->t},
-                                                           {unaryexp->v, unaryexp->t},
-                                                           {temp_name, ir::Type::Int},
-                                                           Operator::mul));
+                    root->v = std::to_string(std::stoi(root->v) * std::stoi(unaryexp->v));
                     break;
                 case TokenType::DIV:
-                    instructions.push_back(new Instruction({root->v, root->t},
-                                                           {unaryexp->v, unaryexp->t},
-                                                           {temp_name, ir::Type::Int},
-                                                           Operator::div));
+                    root->v = std::to_string(std::stoi(root->v) / std::stoi(unaryexp->v));
                     break;
                 case TokenType::MOD:
-                    instructions.push_back(new Instruction({root->v, root->t},
-                                                           {unaryexp->v, unaryexp->t},
-                                                           {temp_name, ir::Type::Int},
-                                                           Operator::mod));
+                    root->v = std::to_string(std::stoi(root->v) % std::stoi(unaryexp->v));
                     break;
                 default:
                     break;
                 }
-                root->v = temp_name;
-                break;
-
-            default:
-                break;
+                root->t = ir::Type::IntLiteral;
             }
-            break;
-        case ir::Type::IntLiteral:
-            switch (unaryexp->t)
+            else
             {
-            case ir::Type::Int:
+                if (unaryexp->t == ir::Type::Float || unaryexp->t == ir::Type::FloatLiteral)
+                {
+                    instructions.push_back(new Instruction({unaryexp->v, unaryexp->t},
+                                                           {},
+                                                           {temp_name, ir::Type::Int},
+                                                           Operator::cvt_f2i));
+                }
+                else
+                {
+                    instructions.push_back(new Instruction({unaryexp->v, unaryexp->t},
+                                                           {},
+                                                           {temp_name, ir::Type::Int},
+                                                           Operator::mov));
+                }
                 switch (term->token.type)
                 {
                 case TokenType::MULT:
-                    instructions.push_back(new Instruction({root->v, root->t},
-                                                           {unaryexp->v, unaryexp->t},
+                    instructions.push_back(new Instruction({root->v, ir::Type::IntLiteral},
+                                                           {temp_name, ir::Type::Int},
                                                            {temp_name, ir::Type::Int},
                                                            Operator::mul));
                     break;
                 case TokenType::DIV:
-                    instructions.push_back(new Instruction({root->v, root->t},
-                                                           {unaryexp->v, unaryexp->t},
+                    instructions.push_back(new Instruction({root->v, ir::Type::IntLiteral},
+                                                           {temp_name, ir::Type::Int},
                                                            {temp_name, ir::Type::Int},
                                                            Operator::div));
                     break;
                 case TokenType::MOD:
-                    instructions.push_back(new Instruction({root->v, root->t},
-                                                           {unaryexp->v, unaryexp->t},
+                    instructions.push_back(new Instruction({root->v, ir::Type::IntLiteral},
+                                                           {temp_name, ir::Type::Int},
                                                            {temp_name, ir::Type::Int},
                                                            Operator::mod));
                     break;
@@ -1430,68 +1526,106 @@ void frontend::Analyzer::analysisMulExp(MulExp *root, std::vector<Instruction *>
                 }
                 root->v = temp_name;
                 root->t = ir::Type::Int;
+            }
+            break;
+
+        case ir::Type::Float:
+            if (unaryexp->t == ir::Type::Int || unaryexp->t == ir::Type::IntLiteral)
+            {
+                instructions.push_back(new Instruction({unaryexp->v, unaryexp->t},
+                                                       {},
+                                                       {temp_name, ir::Type::Float},
+                                                       Operator::cvt_i2f));
+            }
+            else
+            {
+                instructions.push_back(new Instruction({unaryexp->v, unaryexp->t},
+                                                       {},
+                                                       {temp_name, ir::Type::Float},
+                                                       Operator::mov));
+            }
+            switch (term->token.type)
+            {
+            case TokenType::MULT:
+                instructions.push_back(new Instruction({root->v, ir::Type::Float},
+                                                       {temp_name, ir::Type::Float},
+                                                       {temp_name, ir::Type::Float},
+                                                       Operator::mul));
                 break;
-            case ir::Type::IntLiteral:
+            case TokenType::DIV:
+                instructions.push_back(new Instruction({root->v, ir::Type::Float},
+                                                       {temp_name, ir::Type::Float},
+                                                       {temp_name, ir::Type::Float},
+                                                       Operator::div));
+                break;
+            case TokenType::MOD:
+                instructions.push_back(new Instruction({root->v, ir::Type::Float},
+                                                       {temp_name, ir::Type::Float},
+                                                       {temp_name, ir::Type::Float},
+                                                       Operator::mod));
+                break;
+            default:
+                break;
+            }
+            break;
+        case ir::Type::FloatLiteral:
+            if (unaryexp->t == ir::Type::FloatLiteral)
+            {
                 switch (term->token.type)
                 {
                 case TokenType::MULT:
-                    // instructions.push_back(new Instruction({root->v, root->t},
-                    //                                            {unaryexp->v, unaryexp->t},
-                    //                                            {temp_name, ir::Type::IntLiteral},
-                    //                                            Operator::mul));
-                    root->v = std::to_string(std::stoi(root->v) * std::stoi(unaryexp->v));
+                    root->v = std::to_string(std::stof(root->v) * std::stof(unaryexp->v));
                     break;
                 case TokenType::DIV:
-                    // instructions.push_back(new Instruction({root->v, root->t},
-                    //                                            {unaryexp->v, unaryexp->t},
-                    //                                            {temp_name, ir::Type::IntLiteral},
-                    //                                            Operator::div));
-                    root->v = std::to_string(std::stoi(root->v) / std::stoi(unaryexp->v));
+                    root->v = std::to_string(std::stof(root->v) / std::stof(unaryexp->v));
                     break;
                 case TokenType::MOD:
-                    // instructions.push_back(new Instruction({root->v, root->t},
-                    //                                            {unaryexp->v, unaryexp->t},
-                    //                                            {temp_name, ir::Type::IntLiteral},
-                    //                                            Operator::mod));
-                    root->v = std::to_string(std::stoi(root->v) % std::stoi(unaryexp->v));
+                    root->v = std::to_string(std::fmod(std::stof(root->v), std::stof(unaryexp->v)));
+                    break;
+                }
+                root->t = ir::Type::FloatLiteral;
+            }else{
+                if(unaryexp->t == ir::Type::Int || unaryexp->t == ir::Type::IntLiteral){
+                    instructions.push_back(new Instruction({unaryexp->v, unaryexp->t},
+                                                           {},
+                                                           {temp_name, ir::Type::Float},
+                                                           Operator::cvt_i2f));
+                }else{
+                    instructions.push_back(new Instruction({unaryexp->v, unaryexp->t},
+                                                           {},
+                                                           {temp_name, ir::Type::Float},
+                                                           Operator::mov));
+                }
+                switch (term->token.type)
+                {
+                case TokenType::MULT:
+                    instructions.push_back(new Instruction({root->v, ir::Type::FloatLiteral},
+                                                           {temp_name, ir::Type::Float},
+                                                           {temp_name, ir::Type::Float},
+                                                           Operator::mul));
+                    break;
+                case TokenType::DIV:
+                    instructions.push_back(new Instruction({root->v, ir::Type::FloatLiteral},
+                                                           {temp_name, ir::Type::Float},
+                                                           {temp_name, ir::Type::Float},
+                                                           Operator::div));
+                    break;
+                case TokenType::MOD:
+                    instructions.push_back(new Instruction({root->v, ir::Type::FloatLiteral},
+                                                           {temp_name, ir::Type::Float},
+                                                           {temp_name, ir::Type::Float},
+                                                           Operator::mod));
                     break;
                 default:
                     break;
                 }
-                root->t = ir::Type::IntLiteral;
-                break;
-
-            default:
-                break;
+                root->v = temp_name;
+                root->t = ir::Type::Float;
             }
             break;
         default:
             break;
         }
-
-        // auto temp_name = get_temp_name();
-        // if (term->token.type == TokenType::MULT)
-        // {
-        //     instructions.push_back(new Instruction({root->v, root->t},
-        //                                                {unaryexp->v, unaryexp->t},
-        //                                                {temp_name, root->t},
-        //                                                Operator::mul));
-        // }
-        // else if (term->token.type == TokenType::DIV)
-        // {
-        //     instructions.push_back(new Instruction({root->v, root->t},
-        //                                                {unaryexp->v, unaryexp->t},
-        //                                                {temp_name, root->t},
-        //                                                Operator::div));
-        // }
-        // else
-        // {
-        //     instructions.push_back(new Instruction({root->v, root->t},
-        //                                                {unaryexp->v, unaryexp->t},
-        //                                                {temp_name, root->t},
-        //                                                Operator::mod));
-        // }
-        // root->v = temp_name;
     }
 }
 
@@ -1548,21 +1682,17 @@ void frontend::Analyzer::analysisUnaryExp(UnaryExp *root, std::vector<Instructio
     }
     else // 如果是一元运算符
     {
-        // std::cout << "UnaryOp" << std::endl;
         GET_CHILD_PTR(unaryop, UnaryOp, 0);
         analysisUnaryOp(unaryop, instructions);
 
         GET_CHILD_PTR(unaryexp, UnaryExp, 1);
         COPY_EXP_NODE(root, unaryexp);
-        // std::cout << root->v << std::endl;
         analysisUnaryExp(unaryexp, instructions);
         COPY_EXP_NODE(unaryexp, root);
-        // std::cout << root->v << std::endl;
 
         if (unaryop->op == TokenType::MINU)
         {
             auto temp_name = get_temp_name();
-            // std::cout << "UnaryOp: " << toString(root->t) + " " + temp_name << std::endl;
             switch (root->t)
             {
             case ir::Type::Int:
@@ -1574,26 +1704,20 @@ void frontend::Analyzer::analysisUnaryExp(UnaryExp *root, std::vector<Instructio
                 root->v = temp_name;
                 break;
             case ir::Type::IntLiteral:
-                // instructions.push_back(new Instruction({"0", ir::Type::IntLiteral},
-                //                                            {root->v, root->t},
-                //                                            {temp_name, ir::Type::IntLiteral},
-                //                                            Operator::sub));
-                // root->v = std::to_string(-std::stoi(root->v));
-
                 root->t = ir::Type::IntLiteral;
-                // root->v = temp_name;
-                // !1!
                 root->v = std::to_string(-std::stoi(root->v));
-                // std::cout << "UnaryOp: " << toString(root->t) + " " + root->v << std::endl;
                 break;
             case ir::Type::Float:
-            case ir::Type::FloatLiteral:
                 instructions.push_back(new Instruction({"0.0", ir::Type::FloatLiteral},
                                                        {root->v, root->t},
                                                        {temp_name, ir::Type::Float},
                                                        Operator::fsub));
                 root->t = ir::Type::Float;
                 root->v = temp_name;
+                break;
+            case ir::Type::FloatLiteral:
+                root->t = ir::Type::FloatLiteral;
+                root->v = std::to_string(-std::stof(root->v));
                 break;
             default:
                 assert(0);
@@ -1632,7 +1756,6 @@ void frontend::Analyzer::analysisUnaryExp(UnaryExp *root, std::vector<Instructio
 // TokenType op;
 void frontend::Analyzer::analysisUnaryOp(UnaryOp *root, std::vector<Instruction *> &instructions)
 {
-    // std::cout << "analysisUnaryOp" << std::endl; // todelete
     GET_CHILD_PTR(term, Term, 0);
     root->op = term->token.type;
 }
@@ -1647,6 +1770,7 @@ void frontend::Analyzer::analysisFuncRParams(FuncRParams *root, vector<Operand> 
         {
             GET_CHILD_PTR(exp, Exp, i);
             exp->v = params[index].name;
+            exp->t = params[index].type;
             analysisExp(exp, instructions);
             params[index] = {exp->v, exp->t};
             index++;
