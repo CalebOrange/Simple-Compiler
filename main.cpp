@@ -3,6 +3,7 @@
 #include"front/semantic.h"
 #include"ir/ir.h"
 #include"tools/ir_executor.h"
+#include"backend/generator.h"
 
 #include<string>
 #include<vector>
@@ -78,6 +79,12 @@ int main(int argc, char** argv) {
         auto executor = ir::Executor(&program);
         std::cout << program.draw() << "--------------------------- Executor::run() ---------------------------" << std::endl;
         fprintf(ir::reopen_output_file, "\n%d", (uint8_t)executor.run());
+    }
+
+    // compiler <src_filename> -S -o <output_filename>
+    if(step == "-S") {
+        backend::Generator generator(program, output_file);
+        generator.gen();
     }
     return 0;
 }
