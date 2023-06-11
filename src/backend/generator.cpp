@@ -10,12 +10,12 @@ void backend::Generator::gen()
 {
     for (auto &global_val : program.globalVal)
     {
-        fout << ".global " << global_val.first << std::endl;
+        fout << ".global " << global_val.val.name<< std::endl;
         fout << ".align 2" << std::endl;
-        fout << ".type " << global_val.first << ", @object" << std::endl;
-        fout << ".size " << global_val.first << ", 4" << std::endl;
-        fout << global_val.first << ":" << std::endl;
-        fout << ".word " << global_val.second << std::endl;
+        fout << ".type " << global_val.val.name << ", @object" << std::endl;
+        fout << ".size " << global_val.val.name << ", 4" << std::endl;
+        fout << global_val.val.name << ":" << std::endl;
+        fout << ".word " << "0" << std::endl;
     }
     for (auto &func : program.functions)
     {
