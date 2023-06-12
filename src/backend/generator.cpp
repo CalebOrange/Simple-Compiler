@@ -10,12 +10,14 @@ void backend::Generator::gen()
 {
     for (auto &global_val : program.globalVal)
     {
-        fout << ".global " << global_val.val.name<< std::endl;
-        fout << ".align 2" << std::endl;
-        fout << ".type " << global_val.val.name << ", @object" << std::endl;
-        fout << ".size " << global_val.val.name << ", 4" << std::endl;
+        fout << "\t.global " << global_val.val.name << std::endl;
+        fout << "\t.align 2" << std::endl;
+        fout << "\t.type " << global_val.val.name << ", @object" << std::endl;
+        fout << "\t.size " << global_val.val.name << ", 4" << std::endl;
         fout << global_val.val.name << ":" << std::endl;
-        fout << ".word " << "0" << std::endl;
+        fout << "\t.word "
+             << "0" << std::endl
+             << std::endl;
     }
     for (auto &func : program.functions)
     {
@@ -23,5 +25,5 @@ void backend::Generator::gen()
     }
 }
 
-void backend::Generator::gen_func(const ir::Function &){}
-void backend::Generator::gen_instr(const ir::Instruction &){}
+void backend::Generator::gen_func(const ir::Function &) {}
+void backend::Generator::gen_instr(const ir::Instruction &) {}
