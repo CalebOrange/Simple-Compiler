@@ -1,6 +1,8 @@
 #include "backend/rv_def.h"
+#include <cassert>
 
-std::string rv::toString(rv::rvREG r) {
+std::string rv::toString(rv::rvREG r)
+{
     switch (r)
     {
     case rv::rvREG::X5:
@@ -27,6 +29,33 @@ std::string rv::toString(rv::rvREG r) {
         return "a7";
     case rv::rvREG::X28:
         return "t3";
+    case rv::rvREG::X29:
+        return "t4";
+    case rv::rvREG::X2:
+        return "sp";
+    default:
+        assert(0 && "invalid rvREG");
+        break;
+    }
+}
+
+
+std::string rv::toString(rvOPCODE r){
+    switch (r)
+    {
+    case rvOPCODE::ADD:
+        return "add";
+        break;
+    case rvOPCODE::SUB:
+        return "sub";
+        break;
+    case rvOPCODE::MUL:
+        return "mul";
+        break;
+    case rvOPCODE::DIV:
+        return "div";
+        break;
+    
     default:
         break;
     }

@@ -90,7 +90,7 @@ enum class rvOPCODE {
     JAL, JALR,                                              // jump
 
     // RV32M Multiply Extension
-
+    MUL, DIV,
     // RV32F / D Floating-Point Extensions
 
     // Pseudo Instructions
