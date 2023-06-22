@@ -55,6 +55,39 @@ void backend::Generator::load(ir::Operand operand, rv::rvREG reg, int offset)
     fout << "\tlw " << toString(reg) << ", " << stackVar.find_operand(operand) + offset << "(sp)" << std::endl;
 }
 
+void backend::Generator::load(ir::Operand operand, std::string reg, int offset)
+{
+    // if it is a global variable
+    if (global_vals.count(operand.name))
+    {
+        fout << "\tla " << reg << ", " << operand.name << std::endl;
+        fout << "\tlw " << reg << ", " << offset << "(" << reg << ")" << std::endl;
+        return;
+    }
+    fout << "\tlw " << reg << ", " << stackVar.find_operand(operand) + offset << "(sp)" << std::endl;
+}
+
+void backend::Generator::load(ir::Operand operand, std::string reg, std::string offset)
+{
+    // if it is a global variable
+    if (global_vals.count(operand.name))
+    {
+        auto temp_reg = get_temp_reg();
+        fout << "\tla " << temp_reg << ", " << operand.name << std::endl;
+        fout << "\tadd " << temp_reg << ", " << temp_reg << ", " << offset << std::endl;
+        fout << "\tlw " << reg << ", "
+             << "0(" + temp_reg + ")" << std::endl;
+        free_temp_reg(temp_reg);
+        return;
+    }
+    auto temp_reg = get_temp_reg();
+    fout << "\taddi " << temp_reg << ", " << offset << ", " << stackVar.find_operand(operand) << std::endl;
+    fout << "\tadd " << temp_reg << ", " << temp_reg << ", sp" << std::endl;
+    fout << "\tlw " << reg << ", "
+         << "0(" + temp_reg + ")" << std::endl;
+    free_temp_reg(temp_reg);
+}
+
 void backend::Generator::store(ir::Operand operand, rv::rvREG reg, int offset)
 {
     if (global_vals.count(operand.name))
@@ -66,30 +99,58 @@ void backend::Generator::store(ir::Operand operand, rv::rvREG reg, int offset)
     fout << "\tsw " << toString(reg) << ", " << stackVar.find_operand(operand) + offset << "(sp)" << std::endl;
 }
 
-void backend::Generator::fout_instr(rv::rvOPCODE op, rv::rvREG rd, rv::rvREG rs1, rv::rvREG rs2)
+void backend::Generator::store(ir::Operand operand, std::string reg, int offset)
 {
-    auto inst = rv::rv_inst(op, rd, rs1, rs2);
-    fout << inst.draw() << std::endl;
+    if (global_vals.count(operand.name))
+    {
+        auto temp_reg = get_temp_reg();
+        fout << "\tla " << temp_reg << ", " << operand.name << std::endl;
+        fout << "\tsw " << reg << ", " << offset << "(" + temp_reg + ")" << std::endl;
+        free_temp_reg(temp_reg);
+        return;
+    }
+    fout << "\tsw " << reg << ", " << stackVar.find_operand(operand) + offset << "(sp)" << std::endl;
 }
 
-void backend::Generator::fout_instr(rv::rvOPCODE op, rv::rvREG rd, rv::rvREG rs1, uint32_t imm)
+void backend::Generator::store(ir::Operand operand, std::string reg, std::string offset)
 {
-    auto inst = rv::rv_inst(op, rd, rs1, imm);
-    fout << inst.draw() << std::endl;
+    if (global_vals.count(operand.name))
+    {
+        auto temp_reg = get_temp_reg();
+        fout << "\tla " << temp_reg << ", " << operand.name << std::endl;
+        fout << "\tadd " << temp_reg << ", " << temp_reg << ", " << offset << std::endl;
+        fout << "\tsw " << reg << ", "
+             << "0(" + temp_reg + ")" << std::endl;
+        free_temp_reg(temp_reg);
+        return;
+    }
+    auto temp_reg = get_temp_reg();
+    fout << "\taddi " << temp_reg << ", " << offset << ", " << stackVar.find_operand(operand) << std::endl;
+    fout << "\tadd " << temp_reg << ", " << temp_reg << ", sp" << std::endl;
+    fout << "\tsw " << reg << ", "
+         << "0(" + temp_reg + ")" << std::endl;
+    free_temp_reg(temp_reg);
 }
 
-void backend::Generator::fout_instr(rv::rvOPCODE op, rv::rvREG reg1, rv::rvREG reg2, uint32_t imm)
+std::map<std::string, bool> temporaies{{"t3", 0}, {"t4", 0}, {"t5", 0}, {"t6", 0}};
+
+std::string backend::Generator::get_temp_reg()
 {
-    auto inst = rv::rv_inst(op, reg1, reg2, imm);
-    fout << inst.draw() << std::endl;
+    for (auto &reg : temporaies)
+    {
+        if (!reg.second)
+        {
+            reg.second = 1;
+            return reg.first;
+        }
+    }
+    assert(0 && "no temp reg");
 }
 
-void backend::Generator::fout_instr(rv::rvOPCODE op, rv::rvREG rd, uint32_t imm)
+void backend::Generator::free_temp_reg(std::string reg)
 {
-    auto inst = rv::rv_inst(op, rd, imm);
-    fout << inst.draw() << std::endl;
+    temporaies[reg] = 0;
 }
-
 
 void backend::Generator::gen()
 {
@@ -128,6 +189,8 @@ int get_frame_size(const ir::Function &func, backend::stackVarMap &stackVar)
             continue; // avoid duplicate (struct)
         var_set.insert(param.name);
         stackVar.add_operand(param, 4);
+        frame_size += 4;
+        std::cout << param.name << " : " << stackVar._table[param.name] << std::endl;
     }
     // local variable
     for (auto &ins : inst_vec)
@@ -164,10 +227,15 @@ void backend::Generator::gen_func(const ir::Function &function)
     stackVar._table.clear();
     uint32_t frame_size = get_frame_size(function, stackVar);
     fout << "\taddi sp, sp, -" << frame_size << std::endl;
-    // fout_instr(rv::rvOPCODE::ADDI, rv::rvREG::X2, rv::rvREG::X2, rv::rvREG::X0, -frame_size, ""); // fp = sp
     fout << "\tsw ra, " << frame_size - 4 << "(sp)" << std::endl;
-    // fout_instr(rv::rvOPCODE::SW, rv::rvREG::X1, rv::rvREG::X2, rv::rvREG::X1, frame_size - 4, ""); // ra = sp - 4
     // generate
+    for (size_t i = 0; i < function.ParameterList.size(); i++)
+    {
+        auto &param = function.ParameterList[i];
+        auto temp_reg = get_temp_reg();
+        fout << "\tmv " << temp_reg << ", a" << i << std::endl;
+        fout << "\tsw " << temp_reg << ", " << stackVar.find_operand(param) << "(sp)" << std::endl;
+    }
     for (auto &ins : function.InstVec)
     {
         gen_instr(*ins);
@@ -184,11 +252,11 @@ void backend::Generator::gen_instr(const ir::Instruction &instruction)
 {
     auto &op = instruction.op;
     auto &des = instruction.des;
-    auto &src1 = instruction.op1;
-    auto &src2 = instruction.op2;
+    auto &op1 = instruction.op1;
+    auto &op2 = instruction.op2;
     switch (op)
     {
-    case ir::Operator::call:
+    case ir::Operator::call: // call des, op1(arg1, arg2, ...) : des = op1(arg1, arg2, ...)
     {
         fout << "# call" << std::endl;
         auto call_inst = dynamic_cast<const ir::CallInst *>(&instruction);
@@ -238,21 +306,21 @@ void backend::Generator::gen_instr(const ir::Instruction &instruction)
         }
         break;
     }
-    case ir::Operator::_return:
+    case ir::Operator::_return: // return op1 : return op1
     {
         fout << "# return" << std::endl;
-        switch (src1.type)
+        switch (op1.type)
         {
         case ir::Type::Int:
         case ir::Type::IntPtr:
         {
-            auto src1_reg = getRs1(src1);
-            load(src1, src1_reg);
+            auto src1_reg = getRs1(op1);
+            load(op1, src1_reg);
             fout << "\tmv " << toString(rv::rvREG::X10) << ", " << toString(src1_reg) << std::endl;
             break;
         }
         case ir::Type::IntLiteral:
-            fout << "\tli " << toString(rv::rvREG::X10) << ", " << src1.name << std::endl;
+            fout << "\tli " << toString(rv::rvREG::X10) << ", " << op1.name << std::endl;
             break;
         case ir::Type::null:
             break;
@@ -262,136 +330,166 @@ void backend::Generator::gen_instr(const ir::Instruction &instruction)
         }
         break;
     }
-    case ir::Operator::def:
-    case ir::Operator::mov:
+    case ir::Operator::def: // def des, op1 : des = op1;
+    case ir::Operator::mov: // mov des, op1 : des = op1;
     {
-        fout << "# def/mov" << std::endl;
-        auto des_reg = getRd(des);
-        switch (src1.type)
+        if (op == ir::Operator::def)
+            fout << "# def" << std::endl;
+        else
+            fout << "# mov" << std::endl;
+
+        auto rd = "t0";
+        auto rs = "t1";
+
+        switch (op1.type)
         {
         case ir::Type::Int:
         {
-            auto src1_reg = getRs1(src1);
-            load(src1, src1_reg);
-            fout << "\tmv " << toString(des_reg) << ", " << toString(src1_reg) << std::endl;
-            store(des, des_reg);
+            load(op1, rs);
+            fout << "\tmv " << rd << ", " << rs << std::endl;
             break;
         }
         case ir::Type::IntLiteral:
-            fout << "\tli " << toString(des_reg) << ", " << src1.name << std::endl;
-            store(des, des_reg);
+            fout << "\tli " << rd << ", " << op1.name << std::endl;
             break;
         default:
             assert(0 && "wrong type");
             break;
         }
+        store(des, rd);
         break;
     }
-    case ir::Operator::add:
+    case ir::Operator::add: // add des, op1, op2 : des = op1 + op2
     {
         fout << "# add" << std::endl;
-        auto des_reg = getRd(des);
-        if (src1.type == ir ::Type::Int && src2.type == ir::Type::Int)
+        auto rd = "t0";
+        auto rs1 = "t1";
+        auto rs2 = "t2";
+        if (op1.type == ir ::Type::Int && op2.type == ir::Type::Int)
         {
-            auto src1_reg = getRs1(src1);
-            load(src1, src1_reg);
-            auto src2_reg = getRs2(src2);
-            load(src2, src2_reg);
-            fout << "\tadd " << toString(des_reg) << ", " << toString(src1_reg) << ", " << toString(src2_reg) << std::endl;
-            store(des, des_reg);
+            load(op1, rs1);
+            load(op2, rs2);
+            fout << "\tadd " << rd << ", " << rs1 << ", " << rs2 << std::endl;
         }
-        else if (src1.type == ir ::Type::IntLiteral && src2.type == ir::Type::Int)
+        else if (op1.type == ir ::Type::IntLiteral && op2.type == ir::Type::Int)
         {
-            auto src2_reg = getRs1(src2);
-            load(src2, src2_reg);
-            fout << "\taddi " << toString(des_reg) << ", " << toString(src2_reg) << ", " << src1.name << std::endl;
-            store(des, des_reg);
+            load(op2, rs1);
+            fout << "\taddi " << rd << ", " << rs1 << ", " << op1.name << std::endl;
         }
         else
         {
-            auto src1_reg = getRs1(src1);
-            load(src1, src1_reg);
-            fout << "\taddi " << toString(des_reg) << ", " << toString(src1_reg) << ", " << src2.name << std::endl;
-            store(des, des_reg);
+            load(op1, rs1);
+            fout << "\taddi " << rd << ", " << rs1 << ", " << op2.name << std::endl;
         }
-
+        store(des, rd);
         break;
     }
-    case ir::Operator::mul:
+    case ir::Operator::sub:
+    {
+        fout << "# sub" << std::endl;
+        auto rd = "t0";
+        auto rs1 = "t1";
+        auto rs2 = "t2";
+        if (op1.type == ir ::Type::Int && op2.type == ir::Type::Int)
+        {
+            load(op1, rs1);
+            load(op2, rs2);
+            fout << "\tsub " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+        }
+        else if (op1.type == ir ::Type::IntLiteral && op2.type == ir::Type::Int)
+        {
+            load(op2, rs1);
+            fout << "\taddi " << rd << ", " << rs1 << ", -" << op1.name << std::endl;
+        }
+        else
+        {
+            load(op1, rs1);
+            fout << "\taddi " << rd << ", " << rs1 << ", -" << op2.name << std::endl;
+        }
+        store(des, rd);
+        break;
+    }
+    case ir::Operator::mul: // mul des, op1, op2 : des = op1 * op2
     {
         fout << "# mul" << std::endl;
-        auto des_reg = getRd(des);
-        if (src1.type == ir ::Type::Int && src2.type == ir::Type::Int)
+        auto rd = "t0";
+
+        if (op1.type == ir ::Type::Int && op2.type == ir::Type::Int)
         {
-            auto src1_reg = getRs1(src1);
-            load(src1, src1_reg);
-            auto src2_reg = getRs2(src2);
-            load(src2, src2_reg);
-            fout << "\tmul " << toString(des_reg) << ", " << toString(src1_reg) << ", " << toString(src2_reg) << std::endl;
+            auto rs1 = "t1";
+            load(op1, rs1);
+            auto rs2 = "t2";
+            load(op2, rs2);
+            fout << "\tmul " << rd << ", " << rs1 << ", " << rs2 << std::endl;
         }
-        else if (src1.type == ir ::Type::IntLiteral && src2.type == ir::Type::Int)
+        else if (op1.type == ir ::Type::IntLiteral && op2.type == ir::Type::Int)
         {
-            auto src2_reg = getRs1(src2);
-            load(src2, src2_reg);
-            fout << "\tli " << toString(rv::rvREG::X28) << ", " << src1.name << std::endl;
-            fout << "\tmul " << toString(des_reg) << ", " << toString(src2_reg) << ", " << toString(rv::rvREG::X11) << std::endl;
+            auto rs1 = "t1";
+            load(op2, rs1);
+            auto rs2 = get_temp_reg();
+            fout << "\tli " << rs2 << ", " << op1.name << std::endl;
+            fout << "\tmul " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            free_temp_reg(rs2);
         }
-        else if (src1.type == ir ::Type::Int && src2.type == ir::Type::IntLiteral)
+        else if (op1.type == ir ::Type::Int && op2.type == ir::Type::IntLiteral)
         {
-            auto src1_reg = getRs1(src1);
-            load(src1, src1_reg);
-            fout << "\tli " << toString(rv::rvREG::X28) << ", " << src2.name << std::endl;
-            fout << "\tmul " << toString(des_reg) << ", " << toString(src1_reg) << ", " << toString(rv::rvREG::X11) << std::endl;
+            auto rs1 = "t1";
+            load(op1, rs1);
+            auto rs2 = get_temp_reg();
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+            fout << "\tmul " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            free_temp_reg(rs2);
         }
         else
         {
-            fout << "\tli " << toString(rv::rvREG::X28) << ", " << src1.name << std::endl;
-            fout << "\tli " << toString(rv::rvREG::X29) << ", " << src2.name << std::endl;
-            fout << "\tmul " << toString(des_reg) << ", " << toString(rv::rvREG::X28) << ", " << toString(rv::rvREG::X29) << std::endl;
+            auto rs1 = get_temp_reg();
+            fout << "\tli " << rs1 << ", " << op1.name << std::endl;
+            auto rs2 = get_temp_reg();
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+
+            fout << "\tmul " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            free_temp_reg(rs1);
+            free_temp_reg(rs2);
         }
-        store(des, des_reg);
+        store(des, rd);
         break;
     }
-    case ir::Operator::store:
+    case ir::Operator::store: // store des, op1, op2 : op1[op2] = des
     {
         fout << "# store" << std::endl;
-        auto src1_reg = getRs1(src1); // address
-        if (src2.type == ir::Type::IntLiteral)
+        if (op2.type == ir::Type::IntLiteral)
         {
+            auto value = "t0";
             if (des.type == ir::Type::IntLiteral)
             {
-                fout << "\tli " << toString(rv::rvREG::X28) << ", " << des.name << std::endl;
-                store(src1, rv::rvREG::X28, std::stoi(src2.name) * 4);
+                fout << "\tli " << value << ", " << des.name << std::endl;
+                store(op1, value, std::stoi(op2.name) * 4);
             }
             else if (des.type == ir::Type::Int)
             {
-                auto des_reg = getRs2(des);
-                load(des, des_reg);
-                store(src1, des_reg, std::stoi(src2.name) * 4);
+                load(des, value);
+                store(op1, value, std::stoi(op2.name) * 4);
             }
             else
             {
                 assert(0 && "wrong type");
             }
         }
-        else if (src2.type == ir::Type::Int)
+        else if (op2.type == ir::Type::Int)
         {
-            auto src2_reg = getRs2(src2);
-            load(src2, src2_reg);
-            fout << "\tslli " << toString(src2_reg) << ", " << toString(src2_reg) << ", 2" << std::endl;
+            auto offset = "t2";
+            load(op2, offset);
+            fout << "\tslli " << offset << ", " << offset << ", 2" << std::endl;
+            auto value = "t0";
             if (des.type == ir::Type::IntLiteral)
             {
-                fout << "\tli " << toString(rv::rvREG::X28) << ", " << des.name << std::endl;
-                fout << "\tadd " << toString(src1_reg) << ", " << toString(src1_reg) << ", " << toString(src2_reg) << std::endl;
-                fout << "\tsw " << toString(rv::rvREG::X28) << ", 0(" << toString(src1_reg) << ")" << std::endl;
+                fout << "\tli " << value << ", " << des.name << std::endl;
+                store(op1, value, offset);
             }
             else if (des.type == ir::Type::Int)
             {
-                auto des_reg = getRs2(des);
-                load(des, des_reg);
-                fout << "\tli " << toString(rv::rvREG::X28) << ", " << des.name << std::endl;
-                fout << "\tadd " << toString(src1_reg) << ", " << toString(src1_reg) << ", " << toString(src2_reg) << std::endl;
-                fout << "\tsw " << toString(des_reg) << ", 0(" << toString(src1_reg) << ")" << std::endl;
+                load(des, value);
+                store(op1, value, offset);
             }
             else
             {
@@ -404,29 +502,28 @@ void backend::Generator::gen_instr(const ir::Instruction &instruction)
         }
         break;
     }
-    case ir::Operator::load:
+    case ir::Operator::load: // load des, op1, op2 : des = op1[op2]
     {
         fout << "# load" << std::endl;
-        auto des_reg = getRd(des);
-        // fout << "load" << std::endl;
-        if (src2.type == ir::Type::IntLiteral)
+        auto rd = "t0";
+
+        if (op2.type == ir::Type::IntLiteral)
         {
-            auto src1_reg = getRs1(src1);
-            fout << "\taddi " << toString(src1_reg) << ", " << toString(rv::rvREG::X2) << ", " << src2.name << std::endl;
-            fout << "\tmv " << toString(des_reg) << ", " << toString(src1_reg) << std::endl;
-            store(des, des_reg);
+            load(op1, rd, std::stoi(op2.name) * 4);
+        }
+        else if (op2.type == ir::Type::Int)
+        {
+            auto offset = "t2";
+            load(op2, offset);
+            fout << "\tslli " << offset << ", " << offset << ", 2" << std::endl;
+            load(op1, rd, offset);
         }
         else
         {
-            auto src1_reg = getRs1(src1); // address
-            fout << "\taddi " << toString(src1_reg) << ", " << toString(rv::rvREG::X2) << ", " << stackVar.find_operand(src1) << std::endl;
-            auto src2_reg = getRs2(src2); // offset
-            load(src2, src2_reg);
-            fout << "\tslli " << toString(src2_reg) << ", " << toString(src2_reg) << ", 2" << std::endl;
-            fout << "\tadd " << toString(des_reg) << ", " << toString(src1_reg) << ", " << toString(src2_reg) << std::endl;
-            fout << "\tlw " << toString(des_reg) << ", 0(" << toString(des_reg) << ")" << std::endl;
-            store(des, des_reg);
+            assert(0 && "wrong type");
         }
+
+        store(des, rd);
         break;
     }
     case ir::Operator::alloc:
@@ -434,7 +531,7 @@ void backend::Generator::gen_instr(const ir::Instruction &instruction)
         break;
     }
     default:
-        std::cout << "op: " << ir::toString(op) << std::endl;
+        std::cout << "! op: " << ir::toString(op) << std::endl;
         // assert(0 && "todo");
         break;
     }

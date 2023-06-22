@@ -52,14 +52,15 @@ namespace backend
         rv::rvREG getAdrress(ir::Operand); // get a reg for a ir::Operand which is a address
 
         // load/store apiF
-        void load(ir::Operand, rv::rvREG, int offset = 0);                                                                                                              // load a word from mem
-        void store(ir::Operand, rv::rvREG, int offset = 0);                                                                                                             // store a word to mem
-        // R-type
-        void fout_instr(rv::rvOPCODE, rv::rvREG, rv::rvREG, rv::rvREG); // output a R-type instruction to file
-        // I-type / S-type / B-type
-        void fout_instr(rv::rvOPCODE, rv::rvREG, rv::rvREG, uint32_t); // output a I-type / S-type / B-type instruction to file
-        // U-type / J-type
-        void fout_instr(rv::rvOPCODE, rv::rvREG, uint32_t); // output a U-type / J-type instruction to file
+        void load(ir::Operand, rv::rvREG, int offset = 0);    // load a word from mem
+        void load(ir::Operand, std::string, int offset = 0);  // load a word from mem
+        void load(ir::Operand, std::string, std::string);     // load a word from mem
+        void store(ir::Operand, rv::rvREG, int offset = 0);   // store a word to mem
+        void store(ir::Operand, std::string, int offset = 0); // store a word to mem
+        void store(ir::Operand, std::string, std::string);    // store a word to mem
+
+        std::string get_temp_reg();
+        void free_temp_reg(std::string);
 
         // generate wrapper function
         void gen();                              // generate the whole program
