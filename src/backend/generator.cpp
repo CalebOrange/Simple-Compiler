@@ -7,7 +7,7 @@
 
 #define TODO assert(0 && "todo")
 
-const std::vector<rv::rvREG> returnArgs{rv::rvREG::X10, rv::rvREG::X11, rv::rvREG::X12, rv::rvREG::X13, rv::rvREG::X14, rv::rvREG::X15, rv::rvREG::X16, rv::rvREG::X17};
+const std::vector<std::string> returnArgs{"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7"};
 
 int backend::stackVarMap::add_operand(ir::Operand operand, uint32_t size)
 {
@@ -20,40 +20,7 @@ int backend::stackVarMap::find_operand(ir::Operand operand)
     return _table[operand.name];
 }
 
-backend::Generator::Generator(ir::Program &p, std::ofstream &f) : program(p), fout(f) {}
-
-rv::rvREG backend::Generator::getRd(ir::Operand operand)
-{
-    return rv::rvREG::X5;
-}
-
-rv::rvREG backend::Generator::getRs1(ir::Operand operand)
-{
-    return rv::rvREG::X6;
-}
-
-rv::rvREG backend::Generator::getRs2(ir::Operand operand)
-{
-    return rv::rvREG::X7;
-}
-
-rv::rvREG backend::Generator::getAdrress(ir::Operand operand)
-{
-
-    return rv::rvREG::X28;
-}
-
-void backend::Generator::load(ir::Operand operand, rv::rvREG reg, int offset)
-{
-    // if it is a global variable
-    if (global_vals.count(operand.name))
-    {
-        fout << "\tla " << toString(reg) << ", " << operand.name << std::endl;
-        fout << "\tlw " << toString(reg) << ", " << offset << "(" << toString(reg) << ")" << std::endl;
-        return;
-    }
-    fout << "\tlw " << toString(reg) << ", " << stackVar.find_operand(operand) + offset << "(sp)" << std::endl;
-}
+backend::Generator::Generator(ir::Program &p, std::ofstream &f) : program(p), fout(f), label_cnt(0) {}
 
 void backend::Generator::load(ir::Operand operand, std::string reg, int offset)
 {
@@ -86,17 +53,6 @@ void backend::Generator::load(ir::Operand operand, std::string reg, std::string 
     fout << "\tlw " << reg << ", "
          << "0(" + temp_reg + ")" << std::endl;
     free_temp_reg(temp_reg);
-}
-
-void backend::Generator::store(ir::Operand operand, rv::rvREG reg, int offset)
-{
-    if (global_vals.count(operand.name))
-    {
-        fout << "\tla " << toString(rv::rvREG::X28) << ", " << operand.name << std::endl; // t3 is a temp register
-        fout << "\tsw " << toString(reg) << ", " << offset << "(" + toString(rv::rvREG::X28) + ")" << std::endl;
-        return;
-    }
-    fout << "\tsw " << toString(reg) << ", " << stackVar.find_operand(operand) + offset << "(sp)" << std::endl;
 }
 
 void backend::Generator::store(ir::Operand operand, std::string reg, int offset)
@@ -132,7 +88,7 @@ void backend::Generator::store(ir::Operand operand, std::string reg, std::string
     free_temp_reg(temp_reg);
 }
 
-std::map<std::string, bool> temporaies{{"t3", 0}, {"t4", 0}, {"t5", 0}, {"t6", 0}};
+std::map<std::string, bool> temporaies{{"t3", 0}, {"t4", 0}, {"t5", 0}, {"t6", 0}, {"s2", 0}, {"s3", 0}, {"s4", 0}, {"s5", 0}, {"s6", 0}, {"s7", 0}, {"s8", 0}, {"s9", 0}, {"s10", 0}, {"s11", 0}};
 
 std::string backend::Generator::get_temp_reg()
 {
@@ -215,9 +171,28 @@ int get_frame_size(const ir::Function &func, backend::stackVarMap &stackVar)
     return frame_size;
 }
 
+void backend::Generator::init_label(const ir::Function &func)
+{
+    label_map.clear();
+    int index = 0;
+    for (auto &ins : func.InstVec)
+    {
+        if (ins->op == ir::Operator::_goto)
+        {
+            int tidx = index + std::stoi(ins->des.name);
+            // if(tidx >= func.InstVec.size())
+            //     continue;
+            label_map[tidx] = ".L" + std::to_string(label_cnt);
+            label_cnt++;
+        }
+        index++;
+    }
+}
+
 void backend::Generator::gen_func(const ir::Function &function)
 {
     // header
+    fout << std::endl;
     fout << "\t.text" << std::endl;
     fout << "\t.global " << function.name << std::endl;
     fout << "\t.type " << function.name << ", @function" << std::endl;
@@ -226,6 +201,7 @@ void backend::Generator::gen_func(const ir::Function &function)
     // entry
     stackVar._table.clear();
     uint32_t frame_size = get_frame_size(function, stackVar);
+    init_label(function);
     fout << "\taddi sp, sp, -" << frame_size << std::endl;
     fout << "\tsw ra, " << frame_size - 4 << "(sp)" << std::endl;
     // generate
@@ -236,9 +212,25 @@ void backend::Generator::gen_func(const ir::Function &function)
         fout << "\tmv " << temp_reg << ", a" << i << std::endl;
         fout << "\tsw " << temp_reg << ", " << stackVar.find_operand(param) << "(sp)" << std::endl;
     }
+    int index = 0;
     for (auto &ins : function.InstVec)
     {
-        gen_instr(*ins);
+        if (label_map.count(index))
+        {
+            fout << label_map[index] << ":" << std::endl;
+        }
+        gen_instr(*ins, index);
+        index++;
+        if (ins->op == ir::Operator::_return)
+        {
+            fout << "\tlw ra, " << frame_size - 4 << "(sp)" << std::endl;
+            fout << "\taddi sp, sp, " << frame_size << std::endl;
+            fout << "\tjr ra" << std::endl;
+        }
+    }
+    while(label_map.count(index)){
+        fout << label_map[index] << ":" << std::endl;
+        index++;
     }
     // exit
     fout << "\tlw ra, " << frame_size - 4 << "(sp)" << std::endl;
@@ -248,7 +240,7 @@ void backend::Generator::gen_func(const ir::Function &function)
     fout << "\t.size " << function.name << ", .-" << function.name << std::endl;
 }
 
-void backend::Generator::gen_instr(const ir::Instruction &instruction)
+void backend::Generator::gen_instr(const ir::Instruction &instruction, int index)
 {
     auto &op = instruction.op;
     auto &des = instruction.des;
@@ -271,13 +263,13 @@ void backend::Generator::gen_instr(const ir::Instruction &instruction)
             case ir::Type::Int:
             case ir::Type::IntPtr:
             {
-                auto reg = getRs1(arg);
+                auto reg = "t1";
                 load(arg, reg);
-                fout << "\tmv " << toString(arg_reg) << ", " << toString(reg) << std::endl;
+                fout << "\tmv " << arg_reg << ", " << reg << std::endl;
                 break;
             }
             case ir::Type::IntLiteral:
-                fout << "\tli " << toString(arg_reg) << ", " << arg.name << std::endl;
+                fout << "\tli " << arg_reg << ", " << arg.name << std::endl;
                 break;
             default:
                 assert(0 && "wrong type");
@@ -293,9 +285,10 @@ void backend::Generator::gen_instr(const ir::Instruction &instruction)
         case ir::Type::Int:
         case ir::Type::IntPtr:
         {
-            auto des_reg = getRd(des);
-            fout << "\tmv " << toString(des_reg) << ", " << toString(rv::rvREG::X10) << std::endl;
-            store(des, des_reg);
+            auto rd = "t0";
+            fout << "\tmv " << rd << ", "
+                 << "a0" << std::endl;
+            store(des, rd);
             break;
         }
         case ir::Type::null:
@@ -314,9 +307,9 @@ void backend::Generator::gen_instr(const ir::Instruction &instruction)
         case ir::Type::Int:
         case ir::Type::IntPtr:
         {
-            auto src1_reg = getRs1(op1);
-            load(op1, src1_reg);
-            fout << "\tmv " << toString(rv::rvREG::X10) << ", " << toString(src1_reg) << std::endl;
+            auto rs1 = "t1";
+            load(op1, rs1);
+            fout << "\tmv " << toString(rv::rvREG::X10) << ", " << rs1 << std::endl;
             break;
         }
         case ir::Type::IntLiteral:
@@ -384,7 +377,7 @@ void backend::Generator::gen_instr(const ir::Instruction &instruction)
         store(des, rd);
         break;
     }
-    case ir::Operator::sub:
+    case ir::Operator::sub: // sub des, op1, op2 : des = op1 - op2
     {
         fout << "# sub" << std::endl;
         auto rd = "t0";
@@ -398,13 +391,15 @@ void backend::Generator::gen_instr(const ir::Instruction &instruction)
         }
         else if (op1.type == ir ::Type::IntLiteral && op2.type == ir::Type::Int)
         {
-            load(op2, rs1);
-            fout << "\taddi " << rd << ", " << rs1 << ", -" << op1.name << std::endl;
+            fout << "\tli " << rs1 << ", " << op1.name << std::endl;
+            load(op2, rs2);
+            fout << "\tsub " << rd << ", " << rs1 << ", " << rs2 << std::endl;
         }
         else
         {
             load(op1, rs1);
-            fout << "\taddi " << rd << ", " << rs1 << ", -" << op2.name << std::endl;
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+            fout << "\tsub " << rd << ", " << rs1 << ", " << rs2 << std::endl;
         }
         store(des, rd);
         break;
@@ -452,6 +447,356 @@ void backend::Generator::gen_instr(const ir::Instruction &instruction)
             free_temp_reg(rs2);
         }
         store(des, rd);
+        break;
+    }
+    case ir::Operator::div: // div des, op1, op2 : des = op1 / op2
+    {
+        fout << "# div" << std::endl;
+        auto rd = "t0";
+        if (op1.type == ir::Type::Int && op2.type == ir::Type::Int)
+        {
+            auto rs1 = "t1";
+            load(op1, rs1);
+            auto rs2 = "t2";
+            load(op2, rs2);
+            fout << "\tdiv " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+        }
+        else if (op1.type == ir::Type::IntLiteral && op2.type == ir::Type::Int)
+        {
+            auto rs1 = "t1";
+            load(op2, rs1);
+            auto rs2 = get_temp_reg();
+            fout << "\tli " << rs2 << ", " << op1.name << std::endl;
+            fout << "\tdiv " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            free_temp_reg(rs2);
+        }
+        else if (op1.type == ir::Type::Int && op2.type == ir::Type::IntLiteral)
+        {
+            auto rs1 = "t1";
+            load(op1, rs1);
+            auto rs2 = get_temp_reg();
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+            fout << "\tdiv " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            free_temp_reg(rs2);
+        }
+        else
+        {
+            auto rs1 = get_temp_reg();
+            fout << "\tli " << rs1 << ", " << op1.name << std::endl;
+            auto rs2 = get_temp_reg();
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+            fout << "\tdiv " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            free_temp_reg(rs1);
+            free_temp_reg(rs2);
+        }
+        store(des, rd);
+        break;
+    }
+    case ir::Operator::mod: // mod des, op1, op2 : des = op1 % op2
+    {
+        fout << "# mod" << std::endl;
+        auto rd = "t0";
+        if (op1.type == ir::Type::Int && op2.type == ir::Type::Int)
+        {
+            auto rs1 = "t1";
+            load(op1, rs1);
+            auto rs2 = "t2";
+            load(op2, rs2);
+            fout << "\trem " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+        }
+        else if (op1.type == ir::Type::IntLiteral && op2.type == ir::Type::Int)
+        {
+            auto rs1 = "t1";
+            load(op2, rs1);
+            auto rs2 = get_temp_reg();
+            fout << "\tli " << rs2 << ", " << op1.name << std::endl;
+            fout << "\trem " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            free_temp_reg(rs2);
+        }
+        else if (op1.type == ir::Type::Int && op2.type == ir::Type::IntLiteral)
+        {
+            auto rs1 = "t1";
+            load(op1, rs1);
+            auto rs2 = get_temp_reg();
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+            fout << "\trem " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            free_temp_reg(rs2);
+        }
+        else
+        {
+            auto rs1 = get_temp_reg();
+            fout << "\tli " << rs1 << ", " << op1.name << std::endl;
+            auto rs2 = get_temp_reg();
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+            fout << "\trem " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            free_temp_reg(rs1);
+            free_temp_reg(rs2);
+        }
+        store(des, rd);
+        break;
+    }
+    case ir::Operator::eq: // eq des, op1, op2 : des = (op1 == op2)
+    {
+        fout << "# eq" << std::endl;
+        auto rd = "t0";
+
+        if (op1.type == ir::Type::Int && op2.type == ir::Type::Int)
+        {
+            auto rs1 = "t1";
+            load(op1, rs1);
+            auto rs2 = "t2";
+            load(op2, rs2);
+            fout << "\txor " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            fout << "\tseqz " << rd << ", " << rd << std::endl;
+        }
+        else if (op1.type == ir::Type::IntLiteral && op2.type == ir::Type::Int)
+        {
+            auto rs1 = "t1";
+            fout << "\tli " << rs1 << ", " << op1.name << std::endl;
+            auto rs2 = "t2";
+            load(op2, rs2);
+            fout << "\txor " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            fout << "\tseqz " << rd << ", " << rd << std::endl;
+            free_temp_reg(rs2);
+        }
+        else if (op1.type == ir::Type::Int && op2.type == ir::Type::IntLiteral)
+        {
+            auto rs1 = "t1";
+            load(op1, rs1);
+            auto rs2 = "t2";
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+            fout << "\txor " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            fout << "\tseqz " << rd << ", " << rd << std::endl;
+            free_temp_reg(rs2);
+        }
+        else
+        {
+            auto rs1 = "t1";
+            fout << "\tli " << rs1 << ", " << op1.name << std::endl;
+            auto rs2 = "t2";
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+            fout << "\txor " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+            fout << "\tseqz " << rd << ", " << rd << std::endl;
+        }
+        store(des, rd);
+        break;
+    }
+    case ir::Operator::_and:
+    {
+        fout << "# and" << std::endl;
+        auto rd = "t0";
+        if (op1.type == ir::Type::Int && op2.type == ir::Type::Int)
+        {
+            auto rs1 = "t1";
+            load(op1, rs1);
+            auto rs2 = "t2";
+            load(op2, rs2);
+            fout << "\tand " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+        }
+        else if (op1.type == ir::Type::IntLiteral && op2.type == ir::Type::Int)
+        {
+            auto rs = "t1";
+            load(op2, rs);
+            fout << "\tandi " << rd << ", " << rs << ", " << op1.name << std::endl;
+        }
+        else if (op1.type == ir::Type::Int && op2.type == ir::Type::IntLiteral)
+        {
+            auto rs = "t1";
+            load(op1, rs);
+            fout << "\tandi " << rd << ", " << rs << ", " << op2.name << std::endl;
+        }
+        else
+        {
+            auto rs1 = "t1";
+            fout << "\tli " << rs1 << ", " << op1.name << std::endl;
+            auto rs2 = "t2";
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+            fout << "\tand " << rs1 << ", " << rs1 << ", " << rs2 << std::endl;
+        }
+        store(des, rd);
+        break;
+    }
+    case ir::Operator::_or:
+    {
+        fout << "# or" << std::endl;
+        auto rd = "t0";
+        if (op1.type == ir::Type::Int && op2.type == ir::Type::Int)
+        {
+            auto rs1 = "t1";
+            load(op1, rs1);
+            auto rs2 = "t2";
+            load(op2, rs2);
+            fout << "\tor " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+        }
+        else if (op1.type == ir::Type::IntLiteral && op2.type == ir::Type::Int)
+        {
+            auto rs = "t1";
+            load(op2, rs);
+            fout << "\tori " << rd << ", " << rs << ", " << op1.name << std::endl;
+        }
+        else if (op1.type == ir::Type::Int && op2.type == ir::Type::IntLiteral)
+        {
+            auto rs = "t1";
+            load(op1, rs);
+            fout << "\tori " << rd << ", " << rs << ", " << op2.name << std::endl;
+        }
+        else
+        {
+            auto rs1 = "t1";
+            fout << "\tli " << rs1 << ", " << op1.name << std::endl;
+            auto rs2 = "t2";
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+            fout << "\tor " << rs1 << ", " << rs1 << ", " << rs2 << std::endl;
+        }
+        store(des, rd);
+        break;
+    }
+    case ir::Operator::_not:
+    {
+        fout << "# not" << std::endl;
+        auto rd = "t0";
+        if (op1.type == ir::Type::Int)
+        {
+            auto rs = "t1";
+            load(op1, rs);
+            fout << "\tseqz " << rd << ", " << rs << std::endl;
+        }
+        else if (op1.type == ir::Type::IntLiteral)
+        {
+            auto rs = "t1";
+            fout << "\tli " << rs << ", " << op1.name << std::endl;
+            fout << "\tseqz " << rd << ", " << rs << std::endl;
+        }
+        else
+        {
+            assert(0);
+        }
+        store(des, rd);
+        break;
+    }
+    case ir::Operator::lss:
+    {
+        fout << "# lss" << std::endl;
+        auto rd = "t0";
+        auto rs1 = "t1";
+        auto rs2 = "t2";
+        if (op1.type == ir::Type::Int && op2.type == ir::Type::Int)
+        {
+            load(op1, rs1);
+            load(op2, rs2);
+            fout << "\tslt " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+        }
+        else if (op1.type == ir::Type::Int && op2.type == ir::Type::IntLiteral)
+        {
+            load(op1, rs1);
+            fout << "\tslti " << rd << ", " << rs1 << ", " << op2.name << std::endl;
+        }
+        else
+        {
+            assert(0);
+        }
+        store(des,rd);
+        break;
+    }
+    case ir::Operator::leq:
+    {
+        fout << "# leq" << std::endl;
+        auto rd = "t0";
+        auto rs1 = "t1";
+        auto rs2 = "t2";
+        if (op1.type == ir::Type::Int && op2.type == ir::Type::Int)
+        {
+            load(op1, rs1);
+            load(op2, rs2);
+            fout << "\tslt " << rd << ", " << rs2 << ", " << rs1 << std::endl;
+        }
+        else if (op1.type == ir::Type::Int && op2.type == ir::Type::IntLiteral)
+        {
+            load(op1, rs1);
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+            fout << "\tslt " << rd << ", " << rs2 << ", " << rs1 << std::endl;
+        }
+        else
+        {
+            assert(0);
+        }
+        fout << "\tseqz " << rd << ", " << rd << std::endl;
+        store(des,rd);
+        break;
+    }
+    case ir::Operator::gtr:
+    {
+        fout << "# gtr" << std::endl;
+        auto rd = "t0";
+        auto rs1 = "t1";
+        auto rs2 = "t2";
+        if (op1.type == ir::Type::Int && op2.type == ir::Type::Int)
+        {
+            load(op1, rs1);
+            load(op2, rs2);
+            fout << "\tslt " << rd << ", " << rs2 << ", " << rs1 << std::endl;
+        }
+        else if (op1.type == ir::Type::Int && op2.type == ir::Type::IntLiteral)
+        {
+            load(op1, rs1);
+            fout << "\tli " << rs2 << ", " << op2.name << std::endl;
+            fout << "\tslt " << rd << ", " << rs2 << ", " << rs1 << std::endl;
+        }
+        else
+        {
+            assert(0);
+        }
+        store(des,rd);
+        break;
+    }
+    case ir::Operator::geq:
+    {
+        fout << "# geq" << std::endl;
+        auto rd = "t0";
+        auto rs1 = "t1";
+        auto rs2 = "t2";
+        if (op1.type == ir::Type::Int && op2.type == ir::Type::Int)
+        {
+            load(op1, rs1);
+            load(op2, rs2);
+            fout << "\tslt " << rd << ", " << rs1 << ", " << rs2 << std::endl;
+        }
+        else if (op1.type == ir::Type::Int && op2.type == ir::Type::IntLiteral)
+        {
+            load(op1, rs1);
+            fout << "\tslti " << rd << ", " << rs1 << ", " << op2.name << std::endl;
+        }
+        else
+        {
+            assert(0);
+        }
+        fout << "\tseqz " << rd << ", " << rd << std::endl;
+        store(des,rd);
+        break;
+    }
+    case ir::Operator::_goto: // goto op1, des : if op1 goto des
+    {
+        fout << "# goto" << std::endl;
+        if (op1.type == ir::Type::null)
+        {
+            fout << "\tj " << label_map[index + std::stoi(des.name)] << std::endl;
+        }
+        else if (op1.type == ir::Type::Int)
+        {
+            auto rs1 = "t0";
+            load(op1, rs1);
+            fout << "\tbnez " << rs1 << ", " << label_map[index + std::stoi(des.name)] << std::endl;
+        }
+        else if (op1.type == ir::Type::IntLiteral)
+        {
+            auto rs1 = "t0";
+            fout << "\tli " << rs1 << ", " << op1.name << std::endl;
+            fout << "\tbnez " << rs1 << ", " << label_map[index + std::stoi(des.name)] << std::endl;
+        }
+        else
+        {
+            assert(0 && "wrong type");
+        }
         break;
     }
     case ir::Operator::store: // store des, op1, op2 : op1[op2] = des

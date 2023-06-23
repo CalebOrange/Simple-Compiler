@@ -39,6 +39,8 @@ namespace backend
         std::ofstream &fout;               // output file
         stackVarMap stackVar;              // the stackVarMap of current function
         std::set<std::string> global_vals; // the global variables
+        std::map<int, std::string> label_map;
+        int label_cnt;
 
         Generator(ir::Program &, std::ofstream &);
 
@@ -52,20 +54,19 @@ namespace backend
         rv::rvREG getAdrress(ir::Operand); // get a reg for a ir::Operand which is a address
 
         // load/store apiF
-        void load(ir::Operand, rv::rvREG, int offset = 0);    // load a word from mem
         void load(ir::Operand, std::string, int offset = 0);  // load a word from mem
         void load(ir::Operand, std::string, std::string);     // load a word from mem
-        void store(ir::Operand, rv::rvREG, int offset = 0);   // store a word to mem
         void store(ir::Operand, std::string, int offset = 0); // store a word to mem
         void store(ir::Operand, std::string, std::string);    // store a word to mem
 
         std::string get_temp_reg();
         void free_temp_reg(std::string);
+        void init_label(const ir::Function&);
 
         // generate wrapper function
         void gen();                              // generate the whole program
         void gen_func(const ir::Function &);     // generate a function
-        void gen_instr(const ir::Instruction &); // generate a instruction
+        void gen_instr(const ir::Instruction &, int); // generate a instruction
     };
 
 } // namespace backend
